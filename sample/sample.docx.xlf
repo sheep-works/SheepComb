@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:okp="okapi-framework:xliff-extensions" xmlns:its="http://www.w3.org/2005/11/its" xmlns:itsxlf="http://www.w3.org/ns/its-xliff/" its:version="2.0">
+<file original="word/document.xml" source-language="en-US" target-language="ja-JP" datatype="x-undefined">
+<body>
+<trans-unit id="NFDBB2FA9-tu1" xml:space="preserve">
+<source xml:lang="en-US">世界統計から見る景気</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu2" xml:space="preserve">
+<source xml:lang="en-US">世界統計から見る景気</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu3" xml:space="preserve">
+<source xml:lang="en-US"><bpt id="1">&lt;run1></bpt>アストラ国の経済成長率は5.8％に達し、昨年の4.2％を大きく上回りました。これにより、国内の雇用が増え、失業率は<ept id="1">&lt;/run1></ept><bpt id="2">&lt;run2></bpt>3.4％<ept id="2">&lt;/run2></ept>まで下がりました。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu4" xml:space="preserve">
+<source xml:lang="en-US"><bpt id="1">&lt;run1></bpt>イモリア国の経済成長率は5.<ept id="1">&lt;/run1></ept><bpt id="2">&lt;run2></bpt>8<ept id="2">&lt;/run2></ept>％に達し、昨年の4.<bpt id="3">&lt;run3></bpt>2％を大きく上回りました<ept id="3">&lt;/run3></ept><bpt id="4">&lt;run4></bpt>が、政治不安も広がっています。<ept id="4">&lt;/run4></ept>国内の雇用<bpt id="5">&lt;run5></bpt>は減り<ept id="5">&lt;/run5></ept>、失業率は<bpt id="6">&lt;run6></bpt>3.4％<ept id="6">&lt;/run6></ept><bpt id="7">&lt;run7></bpt>まで上が<ept id="7">&lt;/run7></ept>りました。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu5" xml:space="preserve">
+<source xml:lang="en-US"><bpt id="1">&lt;run1></bpt>ウソランド国の経済成長率は5.9％で<ept id="1">&lt;/run1></ept><bpt id="2">&lt;run2></bpt>、昨年の5<ept id="2">&lt;/run2></ept>.<bpt id="3">&lt;run3></bpt>8％<ept id="3">&lt;/run3></ept><bpt id="4">&lt;run4></bpt>と比べて横ばいです<ept id="4">&lt;/run4></ept>。国内の雇用<bpt id="5">&lt;run5></bpt>も変わらず、失業率は3.4％となっています<ept id="5">&lt;/run5></ept>。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu6" xml:space="preserve">
+<source xml:lang="en-US"><bpt id="1">&lt;run1></bpt>エモリア国の経済成長率は4<ept id="1">&lt;/run1></ept>.9％で、昨年の<bpt id="2">&lt;run2></bpt>4<ept id="2">&lt;/run2></ept><bpt id="3">&lt;run3></bpt>.8％と比べて横ばいです。国内の雇用も変わらず、失業率は3.4％となっています。<ept id="3">&lt;/run3></ept></source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu7" xml:space="preserve">
+<source xml:lang="en-US">エモリア国の経済成長率は4.9％で、昨年の4.8％と比べて横ばいです。国内の雇用も変わらず、失業率は3.4％となっています。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu8" xml:space="preserve">
+<source xml:lang="en-US">オヨヨヨ国の経済成長率は-5.9％で、昨年の-5.8％と横ばいです。国内の雇用も変わらず、失業率は33.4％となっています。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu9" xml:space="preserve">
+<source xml:lang="en-US"><bpt id="1">&lt;run1></bpt>オヨヨヨヨ国の経済成長率は<ept id="1">&lt;/run1></ept>、昨年<bpt id="2">&lt;run2></bpt>と同様に不明<ept id="2">&lt;/run2></ept>です。国内の雇用<bpt id="3">&lt;run3></bpt>情勢は不明です。<ept id="3">&lt;/run3></ept></source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu10" xml:space="preserve">
+<source xml:lang="en-US">国家間比較</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu11" xml:space="preserve">
+<source xml:lang="en-US">アストラ国とイモリア国を比べると、経済は似ていますが、政治的安定性は大きく異なります。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu12" xml:space="preserve">
+<source xml:lang="en-US">イモリア国とエモリア国を比べると、数字は似ていてもエモリア国の方がイモリア国と比べて人気が高くなっています。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+<trans-unit id="NFDBB2FA9-tu13" xml:space="preserve">
+<source xml:lang="en-US">オヨヨヨ国はアストラ国、イモリア国、ウソランド国、エモリア国のどこと比べても驚くべき不況に陥っています。一方でオヨヨヨヨ国は、オヨヨヨ国と異なり、厳しい情報統制が敷かれており、景気を読むことができません。</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+</body>
+</file>
+<file original="word/settings.xml" source-language="en-US" target-language="ja-JP" datatype="x-undefined">
+<body>
+</body>
+</file>
+<file original="docProps/core.xml" source-language="en-US" target-language="ja-JP" datatype="x-undefined">
+<body>
+<trans-unit id="tu1" xml:space="preserve">
+<source xml:lang="en-US">sheep</source>
+<target xml:lang="ja-JP"></target>
+</trans-unit>
+</body>
+</file>
+</xliff>

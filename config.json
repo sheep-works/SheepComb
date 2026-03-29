@@ -1,0 +1,9 @@
+{
+    "input_file": "sample.csv",
+    "tms": [
+        "sample.tmx"
+    ],
+    "output_file": "ai_check_list.csv",
+    "source_lang": "ja",
+    "target_lang": "en"
+}
