@@ -1,30 +1,56 @@
 import argparse
 import subprocess
 import sys
+import os
+import pandas as pd
 from scripts.util import config
-from scripts.add_tm_to_csv import run_pipeline
+from scripts.parser.parse_wrapper import parse_file, batch_parse
+from scripts.features.add_tm_to_csv import add_tm_matches, run_pipeline
+from scripts.features.consistency_chunker import chunk_consistency
 
 def main():
     parser = argparse.ArgumentParser(description="SheepComb Tool Manager")
-    parser.add_argument("-a", "--add-tm", action="store_true", help="Run add_tm_to_csv.py pipeline")
-    parser.add_argument("-m", "--mxliff", type=str, metavar="FILE", help="Run xlfhack.py on the specified MXLIFF file")
+    parser.add_argument("-a", "--add-tm", action="store_true", help="Run add_tm_to_csv pipeline")
+    parser.add_argument("-c", "--chunk", action="store_true", help="Run consistency chunker")
+    parser.add_argument("-m", "--mxliff", type=str, metavar="FILE", help="Run xlfhack.py on MXLIFF")
     
-    # xlfhack.py options (passed through when -m is used)
-    parser.add_argument("--mode", choices=["char", "word"], default=None, help="Comparison mode for mxliff (char/word). If omitted, prompts for input.")
-    parser.add_argument("--threshold", type=float, default=90.0, help="Similarity threshold for mxliff (0-100)")
-    parser.add_argument("--output", type=str, help="Output file path for mxliff")
+    # Common options
+    parser.add_argument("-i", "--input", help="Input file path (overrides config)")
+    parser.add_argument("-o", "--output", help="Output file path (overrides config)")
+    parser.add_argument("--threshold", type=float, default=90.0, help="Similarity threshold (0-100, default: 90.0)")
+    parser.add_argument("--mode", choices=["char", "word"], default=None, help="Comparison mode (for mxliff)")
 
     args = parser.parse_args()
 
     if args.add_tm:
-        print("Running: add_tm_to_csv.py pipeline")
+        input_file = args.input or config.INPUT_FILE
+        output_file = args.output or config.OUTPUT_FILE
+        print(f"Running: add_tm_to_csv on {input_file}")
         run_pipeline(
-            config.INPUT_FILE, 
+            input_file, 
             config.TMS, 
-            config.OUTPUT_FILE, 
+            output_file, 
             config.SOURCE_LANG, 
             config.TARGET_LANG
         )
+    elif args.chunk:
+        input_file = args.input or config.INPUT_FILE
+        output_file = args.output or "chunks.jsonl"
+        print(f"Running: consistency_chunker on {input_file}")
+        
+        # パーサーと機能を組み合わせる例
+        items = parse_file(input_file, src_lang=config.SOURCE_LANG, tgt_lang=config.TARGET_LANG)
+        if not items:
+            print("No items to process.")
+            sys.exit(1)
+            
+        results = chunk_consistency(items, args.threshold)
+        
+        import json
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for chunk in results:
+                f.write(json.dumps(chunk, ensure_ascii=False) + '\n')
+        print(f"Saved chunks to {output_file}")
     elif args.mxliff:
         if args.mode is None:
             while True:

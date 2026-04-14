@@ -16,4 +16,5 @@ sample_ts/
 # for creation
 instructions/
 
-
+# 元データ
+data/

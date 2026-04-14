@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file id="12" original="/test_ci.xlsx" source-language="zh-CN" target-language="ja" datatype="plaintext" project-id="800786" tool-id="crowdin">
+    <header>
+      <tool tool-id="crowdin" tool-name="Crowdin" tool-version="1.1"/>
+    </header>
+    <body>
+      <trans-unit id="392" resname="P147242AB-tu1">
+        <source>this is a test</source>
+        <target state="translated">改行の\n
+テスト
+だよ</target>
+        <context-group purpose="information">
+          <context context-type="source">P147242AB-tu1
+Sheet1!A1</context>
+        </context-group>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>
