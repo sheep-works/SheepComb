@@ -1,11 +1,14 @@
 import os
 from typing import List, Optional, Type, Dict
 from scripts.parser.base import BaseParser
+from scripts.util.models import RawDocument
 from scripts.parser.xlf_parser import XlfParser, parse_xlf
 from scripts.parser.mxlf_parser import MxlfParser, parse_mxlf
 from scripts.parser.mqxlf_parser import MqxlfParser, parse_mqxlf
 from scripts.parser.sdlxlf_parser import SdlxlfParser, parse_sdlxlf
 from scripts.parser.tmx_parser import TmxParser, parse_tmx
+from scripts.parser.docx_parser import DocxParser
+from scripts.parser.xlsx_parser import XlsxParser
 from scripts.util.types import Segment, SegmentList
 
 def get_parser(extension: str):
@@ -28,27 +31,29 @@ def get_parser_class(extension: str) -> Optional[Type[BaseParser]]:
         '.mqxlf': MqxlfParser,
         '.mxlf': MxlfParser,
         '.sdlxlf': SdlxlfParser,
-        '.tmx': TmxParser
+        '.tmx': TmxParser,
+        '.docx': DocxParser,
+        '.xlsx': XlsxParser
     }
     return parsers.get(extension.lower())
 
-def parse_file(file_path: str, **kwargs) -> SegmentList:
+def parse_document(document: RawDocument, **kwargs) -> SegmentList:
     """
-    ファイルをパースして、Segmentのリストを返す。
+    メモリ上のRawDocumentをパースして、Segmentのリストを返す。
     """
-    _, ext = os.path.splitext(file_path)
+    _, ext = os.path.splitext(document.filename)
     parser_cls = get_parser_class(ext)
     if not parser_cls:
         print(f"Unsupported file extension: {ext}")
         return []
     
-    return parser_cls().parse(file_path, **kwargs)
+    return parser_cls().parse(document, **kwargs)
 
-def batch_parse(file_paths: List[str], **kwargs) -> List[SegmentList]:
+def batch_parse(documents: List[RawDocument], **kwargs) -> List[SegmentList]:
     """
-    複数のファイルパスを受け取って順次処理し、二重リストを返す。
+    複数のRawDocumentを受け取って順次処理し、二重リストを返す。
     """
     results: List[SegmentList] = []
-    for file_path in file_paths:
-        results.append(parse_file(file_path, **kwargs))
+    for doc in documents:
+        results.append(parse_document(doc, **kwargs))
     return results

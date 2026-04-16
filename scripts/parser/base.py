@@ -2,12 +2,13 @@ import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from typing import List
 from scripts.util.types import Segment
+from scripts.util.models import RawDocument
 
 class BaseParser(ABC):
     @abstractmethod
-    def parse(self, file_path: str, **kwargs) -> List[Segment]:
+    def parse(self, document: RawDocument) -> List[Segment]:
         """
-        ファイルをパースして、Segment（dict形式）のリストを返す。
+        RawDocument(メモリ上の内容)をパースして、Segment（dict形式）のリストを返す。
         """
         pass
 
@@ -19,14 +20,13 @@ def get_inner_xml(node: ET.Element) -> str:
 
 class XliffParser(BaseParser):
     """XLIFF系ファイル（XLF, MXLIFF, MQXLIFF, SDLXLIFF）の共通パーサー"""
-    def parse(self, file_path: str, **kwargs) -> List[Segment]:
+    def parse(self, document: RawDocument) -> List[Segment]:
         try:
-            tree = ET.parse(file_path)
+            root = ET.fromstring(document.contents.encode('utf-8'))
         except Exception as e:
-            print(f"Error parsing {file_path}: {e}")
+            print(f"Error parsing {document.filename}: {e}")
             return []
             
-        root = tree.getroot()
         items: List[Segment] = []
         
         for tu in root.iter():

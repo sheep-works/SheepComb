@@ -1,12 +1,13 @@
 from scripts.features.consistency_chunker import chunk_consistency
 from scripts.parser.parse_wrapper import batch_parse
+from scripts.caller.file_io import batch_read_documents
 import os
 import json
 
 def multi_xlf_chunk(input_dir, output_dir, threshold, output_chunk_size=2):
-    input_files = [os.path.join(input_dir, file) for file in os.listdir(input_dir) if file.endswith((".xlf", ".xliff"))]
     
-    file_contents = batch_parse(input_files)
+    documents = batch_read_documents([input_dir], exts=[".xlf", ".xliff"])
+    file_contents = batch_parse(documents)
     merged_content = [item for sublist in file_contents for item in sublist]
     chunked_content = chunk_consistency(merged_content, threshold)
     chunked_content = [chunk for chunk in chunked_content if len(chunk) >= output_chunk_size]

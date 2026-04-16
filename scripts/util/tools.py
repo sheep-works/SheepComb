@@ -1,4 +1,5 @@
 import re
+import os
 
 def strip_tags(text):
     """XML/HTMLタグを除去する"""
@@ -34,3 +35,14 @@ def batch_strip_tags(items):
 def batch_lowercase(items):
     """辞書リストの 'src' と 'tgt' を小文字にする"""
     return [lowercase_item(item) for item in items]
+
+def dir_to_files(dir_path, exts=None):
+    """指定されたディレクトリ内のファイルをリスト化する"""
+    files = []
+    for file in os.listdir(dir_path):
+        if exts is None:
+            files.append(os.path.join(dir_path, file))
+        elif file.endswith(tuple(exts)):
+            files.append(os.path.join(dir_path, file))
+    return files
+    

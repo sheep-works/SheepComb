@@ -1,12 +1,14 @@
 from scripts.parser.parse_wrapper import batch_parse
 from scripts.util import tools
+from scripts.caller.file_io import batch_read_documents
 import os
 import json
 
 def multi_xlf_get_tgt(input_dir, output_dir, to_chunk=False, threshold=4000):
     input_files = [os.path.join(input_dir, file) for file in os.listdir(input_dir) if file.endswith((".xlf", ".xliff"))]
     
-    file_contents = batch_parse(input_files)
+    documents = batch_read_documents(input_files)
+    file_contents = batch_parse(documents)
     merged_content = [tools.strip_tags(item['tgt']) for sublist in file_contents for item in sublist]
 
     if to_chunk:

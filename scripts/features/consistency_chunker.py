@@ -8,7 +8,8 @@ from rapidfuzz import fuzz
 # プロジェクトルートをパスに追加
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from scripts.parser.parse_wrapper import parse_file
+from scripts.parser.parse_wrapper import parse_document
+from scripts.caller.file_io import read_document
 from scripts.util.tools import strip_tags_from_item, lowercase_item, add_index_to_item
 from scripts.util.types import Segment, SegmentList
 
@@ -94,7 +95,8 @@ def main():
     output_file = args.output_file
     threshold = args.threshold
     
-    items = parse_file(input_file, src_lang=args.src_lang, tgt_lang=args.tgt_lang)
+    doc = read_document(input_file, metadata={"src_lang": args.src_lang, "tgt_lang": args.tgt_lang})
+    items = parse_document(doc, src_lang=args.src_lang, tgt_lang=args.tgt_lang)
 
     # チャンク実行
     results = chunk_consistency(items, threshold)

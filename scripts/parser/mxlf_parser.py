@@ -6,4 +6,6 @@ class MxlfParser(XliffParser):
     pass
 
 def parse_mxlf(file_path: str) -> List[Segment]:
-    return MxlfParser().parse(file_path)
+    from scripts.caller.file_io import read_document
+    doc = read_document(file_path)
+    return MxlfParser().parse(doc)

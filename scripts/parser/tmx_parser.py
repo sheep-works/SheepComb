@@ -2,20 +2,21 @@ import xml.etree.ElementTree as ET
 from typing import List
 from scripts.parser.base import BaseParser, get_inner_xml
 from scripts.util.types import Segment
+from scripts.util.models import RawDocument
 
 class TmxParser(BaseParser):
-    def parse(self, file_path: str, **kwargs) -> List[Segment]:
+    def parse(self, document: RawDocument, **kwargs) -> List[Segment]:
         """TMXファイルをパースして、Segmentのリストを返す"""
-        source_lang = kwargs.get('source_lang') or kwargs.get('src_lang', 'ja')
-        target_lang = kwargs.get('target_lang') or kwargs.get('tgt_lang', 'en')
+        # kwargsまたはmetadataから言語情報を取得
+        source_lang = kwargs.get('source_lang') or kwargs.get('src_lang') or document.metadata.get('src_lang', 'ja')
+        target_lang = kwargs.get('target_lang') or kwargs.get('tgt_lang') or document.metadata.get('tgt_lang', 'en')
         
         try:
-            tree = ET.parse(file_path)
+            root = ET.fromstring(document.contents.encode('utf-8'))
         except Exception as e:
-            print(f"Error parsing {file_path}: {e}")
+            print(f"Error parsing {document.filename}: {e}")
             return []
             
-        root = tree.getroot()
         tm_items: List[Segment] = []
         
         for tu in root.findall('.//tu'):
@@ -43,4 +44,6 @@ class TmxParser(BaseParser):
         return tm_items
 
 def parse_tmx(file_path: str, source_lang: str, target_lang: str) -> List[Segment]:
-    return TmxParser().parse(file_path, source_lang=source_lang, target_lang=target_lang)
+    from scripts.caller.file_io import read_document
+    doc = read_document(file_path)
+    return TmxParser().parse(doc, source_lang=source_lang, target_lang=target_lang)

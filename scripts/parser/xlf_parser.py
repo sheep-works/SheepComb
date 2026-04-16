@@ -6,4 +6,6 @@ class XlfParser(XliffParser):
     pass
 
 def parse_xlf(file_path: str) -> List[Segment]:
-    return XlfParser().parse(file_path)
+    from scripts.caller.file_io import read_document
+    doc = read_document(file_path)
+    return XlfParser().parse(doc)
