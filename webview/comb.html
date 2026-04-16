@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SheepComb - File Parser</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2025.11.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2025.11.1/core.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #252529;
+            --bg-card: #202127;
+            --bg-hover: #2e2e32;
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.15);
+            --accent-light: #34d399;
+            --text-primary: rgba(255, 255, 245, 0.9);
+            --text-secondary: rgba(235, 235, 245, 0.6);
+            --text-muted: rgba(235, 235, 245, 0.38);
+            --border: #2e2e32;
+            --border-accent: rgba(16, 185, 129, 0.3);
+            --success: #10b981;
+            --warning: #fbbf24;
+            --error: #f43f5e;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-sub {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .header-badge {
+            margin-left: auto;
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--accent-glow);
+            color: var(--accent-light);
+            border: 1px solid var(--border-accent);
+        }
+
+        /* Main Layout */
+        .main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 800px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 40px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .drop-zone-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .drop-zone-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .drop-zone-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Format Tags */
+        .format-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 16px;
+        }
+
+        .format-tag {
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            font-family: 'SF Mono', 'Consolas', monospace;
+        }
+
+        /* Status */
+        .status-area {
+            margin-top: 16px;
+            min-height: 40px;
+        }
+
+        .status-msg {
+            font-size: 0.85rem;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status-msg.loading {
+            background: var(--accent-glow);
+            color: var(--accent-light);
+            border: 1px solid var(--border-accent);
+        }
+
+        .status-msg.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-msg.error {
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Results */
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .results-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-primary);
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        .results-table-wrap {
+            max-height: 70vh;
+            overflow: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .results-table-wrap::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .results-table-wrap::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        .results-table-wrap::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        th {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            color: var(--text-primary);
+            word-break: break-word;
+            max-width: 350px;
+        }
+
+        tr:hover td {
+            background: var(--bg-hover);
+        }
+
+        td.idx-col {
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.75rem;
+            width: 50px;
+            text-align: center;
+        }
+
+        td.note-col {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .empty-state-text {
+            font-size: 0.9rem;
+        }
+
+        /* Export Button */
+        .btn {
+            font-size: 0.85rem;
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: none;
+            background: var(--accent);
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .btn:hover {
+            background: var(--accent-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* PyScript loading overlay */
+        .py-loading {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .py-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .py-loading-text {
+            margin-top: 20px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .py-loading .spinner {
+            width: 28px;
+            height: 28px;
+            border-width: 3px;
+            color: var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Overlay -->
+    <div class="py-loading" id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="py-loading-text">Python ランタイムを初期化中...</div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <span class="header-logo">SheepComb</span>
+        <span class="header-sub">File Parser</span>
+        <span class="header-badge">PyScript / Pyodide</span>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+        <!-- Left Panel: Upload -->
+        <div class="card" style="display: flex; flex-direction: column; gap: 24px;">
+            <div>
+                <div class="card-title">1. 対象ファイル（抽出元）</div>
+                <div class="drop-zone" id="drop-zone">
+                    <input type="file" id="file-input" multiple accept=".xlf,.xliff,.mxliff,.mqxliff,.sdlxliff,.tmx,.docx,.xlsx" />
+                    <div class="drop-zone-icon">📄</div>
+                    <div class="drop-zone-text">ファイルをドラッグ＆ドロップ</div>
+                    <div class="drop-zone-hint">複数選択可・クリックして選択</div>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.85rem;" id="src-file-names">選択されていません</div>
+                <div class="format-tags">
+                    <span class="format-tag">.xlf</span>
+                    <span class="format-tag">.xliff</span>
+                    <span class="format-tag">.mxliff</span>
+                    <span class="format-tag">.mqxliff</span>
+                    <span class="format-tag">.sdlxliff</span>
+                    <span class="format-tag">.tmx</span>
+                    <span class="format-tag">.docx</span>
+                    <span class="format-tag">.xlsx</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="card-title">2. 参照ファイル（類似文検索用・任意）</div>
+                <div class="drop-zone" id="drop-zone-tm">
+                    <input type="file" id="tm-file-input" multiple accept=".tmx,.xlf,.xliff,.mxliff,.mqxliff,.sdlxliff,.docx,.xlsx" />
+                    <div class="drop-zone-icon">📚</div>
+                    <div class="drop-zone-text">TMX 等をドラッグ＆ドロップ</div>
+                    <div class="drop-zone-hint">複数選択可・クリックして選択</div>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.85rem;" id="tm-file-names">選択されていません</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: auto;">
+                <button class="btn" id="btn-parse-only" style="background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border);">パースのみ</button>
+                <button class="btn" id="btn-parse-match">類似文を計算して抽出</button>
+                <button class="btn" id="btn-consistency" style="background: var(--warning); color: #000;">ゆれチェック</button>
+            </div>
+
+            <div class="status-area" id="status-area"></div>
+        </div>
+
+        <!-- Right Panel: Results -->
+        <div class="card">
+            <div class="results-header">
+                <div class="card-title" style="margin-bottom:0">解析結果</div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span class="results-count" id="results-count" style="display:none"></span>
+                    <button class="btn" id="btn-export-csv" disabled>CSV</button>
+                    <button class="btn" id="btn-export-json" disabled style="background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border);">JSON</button>
+                </div>
+            </div>
+            <div id="results-container">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-text">ファイルをアップロードすると結果が表示されます</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Fast JS Fuzzy Match Logic (Replacing rapidfuzz) -->
+    <script>
+        window.fastLevenshteinRatio = (a, b) => {
+            if (a === b) return 100.0;
+            let aLen = a.length;
+            let bLen = b.length;
+            if (aLen === 0 || bLen === 0) return 0.0;
+
+            let row = new Uint16Array(bLen + 1);
+            for (let i = 0; i <= bLen; i++) row[i] = i;
+
+            for (let i = 1; i <= aLen; i++) {
+                let prev = i;
+                let aChar = a.charCodeAt(i - 1);
+                for (let j = 1; j <= bLen; j++) {
+                    let val;
+                    if (aChar === b.charCodeAt(j - 1)) {
+                        val = row[j - 1]; // cost 0
+                    } else {
+                        let subCost = row[j - 1] + 2; // substitution cost 2 (matching RapidFuzz)
+                        let delCost = row[j] + 1; // deletion cost 1
+                        let insCost = prev + 1; // insertion cost 1
+                        val = Math.min(subCost, delCost, insCost);
+                    }
+                    row[j - 1] = prev;
+                    prev = val;
+                }
+                row[bLen] = prev;
+            }
+            const dist = row[bLen];
+            return ((aLen + bLen - dist) / (aLen + bLen)) * 100.0;
+        };
+
+        window.processExtractJS = (query, choicesStrArr, limit, scoreCutoff) => {
+            let results = [];
+            // Handle array proxy coming from Pyodide
+            let choices = Array.from(choicesStrArr);
+            for (let i = 0; i < choices.length; i++) {
+                let score = window.fastLevenshteinRatio(query, choices[i]);
+                if (score >= scoreCutoff) {
+                    results.push([choices[i], score, i]);
+                }
+            }
+            results.sort((x, y) => y[1] - x[1]);
+            return results.slice(0, limit);
+        };
+
+        // Prevent unintended browser navigation/downloads
+        window.addEventListener('dragover', e => e.preventDefault(), false);
+        window.addEventListener('drop', e => {
+            if (!e.target.closest('.drop-zone')) e.preventDefault();
+        }, false);
+
+        // WASM Integration (Shuttle -> SheepSpindle)
+        window.wasmReady = false;
+        // pkg-web フォルダを参照
+        const wasmPath = './pkg-web/sheep_spindle.js?t=' + Date.now();
+        import(wasmPath).then(async (mod) => {
+            try {
+                await mod.default(); 
+                window.wasm = mod;
+                window.wasmReady = true;
+                console.log("WASM (SheepSpindle) Initialized successfully.");
+            } catch (e) {
+                console.warn("WASM Initialization failed (check .wasm file MIME type):", e);
+            }
+        }).catch(err => {
+            console.error("WASM Import failed (check path or MIME type):", err);
+        });
+
+        /* 
+           ================================================================
+           JS 開発用ガイド:
+           ================================================================
+           Python 側で解析が終わると、window.allSegments に最新のデータが同期されます。
+           
+           [1] データの確認 (コンソール):
+               console.log(window.allSegments);
+
+           [2] データの加工例 (特定の値を書き換えるなど):
+               window.allSegments[0].tgt = "修正後のテキスト";
+
+           [3] FastAPI への送信例:
+               async def sendToApi() {
+                   const res = await fetch('/api/translate', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify(window.allSegments)
+                   });
+                   const result = await res.json();
+                   console.log("Done:", result);
+               }
+           ================================================================
+        */
+    </script>
+    
+    <!-- PyScript Config -->
+    <!-- PYSCRIPT_START -->
+    <script type="py" src="./comb.py" config='{"packages": ["openpyxl", "python-docx", "lxml"]}'></script>
+    <!-- PYSCRIPT_END -->
+</body>
+</html>
