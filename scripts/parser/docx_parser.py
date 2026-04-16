@@ -37,13 +37,31 @@ class DocxParser(BaseParser):
                 
             if num_tables > 1 and "When a segment gets repeated" in doc.tables[0].cell(0, 0).text:
                 return self._extract_phrase(doc)
+            
+            # Fallback for generic tables
+            return self._extract_generic(doc)
 
         except Exception as e:
             print(f"Error during Word format detection/extraction for {document.filename}: {e}")
             return []
 
-        print(f"Unsupported DOCX format: {document.filename}")
-        return []
+    def _extract_generic(self, doc: Document) -> List[Segment]:
+        segments: List[Segment] = []
+        for table in doc.tables:
+            for row in table.rows:
+                row_cells = row.cells
+                if len(row_cells) < 2:
+                    continue
+                
+                src = row_cells[0].text.strip().replace('\t', '\\t')
+                tgt = row_cells[1].text.strip().replace('\t', '\\t')
+                
+                if not src and not tgt:
+                    continue
+                    
+                segments.append({'src': src, 'tgt': tgt})
+        return segments
+
 
     def _extract_memoq(self, doc: Document) -> List[Segment]:
         table = doc.tables[0]
