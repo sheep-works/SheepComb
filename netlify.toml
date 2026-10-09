@@ -5,30 +5,11 @@
 [build.environment]
   NODE_VERSION = "22"
 
-# 1. /app/_nuxt/* へのアセットリクエストを実ファイル /_nuxt/* へマッピング
+# SPA ルーティングのためのリダイレクト設定 (/* -> /index.html)
 [[redirects]]
-  from = "/app/_nuxt/*"
-  to = "/_nuxt/:splat"
-  status = 200
-
-# 2. 静的生成されたページ (/app/groom -> /groom/index.html など) へのマッピング
-[[redirects]]
-  from = "/app/*"
-  to = "/:splat"
-  status = 200
-
-# 3. 未生成ルート用の SPA フォールバック
-[[redirects]]
-  from = "/app/*"
+  from = "/*"
   to = "/index.html"
   status = 200
-
-# 4. ルート / へのアクセスを /app/ へ転送
-[[redirects]]
-  from = "/"
-  to = "/app/"
-  status = 301
-  force = true
 
 # WASM ファイルの配信ヘッダー
 [[headers]]
