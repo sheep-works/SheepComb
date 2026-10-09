@@ -1,23 +1,22 @@
 <template>
-  <div ref="containerRef" class="media-image-container relative rounded-xl border border-white/10 overflow-hidden bg-black/40 cursor-pointer group">
+  <div ref="containerRef" class="media-image-container" @click="$emit('click')">
     <img
       v-if="mediaUrl"
       :src="mediaUrl"
       :alt="filename"
-      class="w-full h-full object-contain block transition-transform group-hover:scale-105 duration-200"
-      @click="$emit('click')"
+      class="media-img"
     />
-    <div v-else class="flex flex-col items-center justify-center w-full h-full text-white/30 text-xs gap-2">
-      <span v-if="isLoading" class="animate-spin text-lg">⏳</span>
-      <span v-else class="text-2xl">🖼️</span>
-      <span class="text-[11px] font-mono">{{ filename || '画像なし' }}</span>
+    <div v-else class="media-placeholder">
+      <span v-if="isLoading" class="spinner">⏳</span>
+      <span v-else class="placeholder-icon">🖼️</span>
+      <span class="placeholder-filename">{{ filename || '画像なし' }}</span>
     </div>
     
     <!-- 拡大アイコンバッジ -->
     <div 
       v-if="mediaUrl" 
-      class="absolute bottom-2 right-2 px-2 py-1 bg-black/70 hover:bg-black/90 text-white/90 text-[10px] rounded-lg border border-white/20 backdrop-blur flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-      @click.stop="$emit('click')"
+      class="zoom-badge"
+      title="拡大表示"
     >
       <span>🔍</span>
       <span>拡大</span>
@@ -83,7 +82,77 @@ onUnmounted(() => {
 
 <style scoped>
 .media-image-container {
+  position: relative;
   width: 100%;
   height: 200px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--transition);
+}
+
+.media-image-container:hover {
+  border-color: var(--accent);
+}
+
+.media-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: transform var(--transition);
+}
+
+.media-image-container:hover .media-img {
+  transform: scale(1.02);
+}
+
+.media-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.placeholder-icon {
+  font-size: 1.8rem;
+}
+
+.placeholder-filename {
+  font-family: monospace;
+  font-size: 0.7rem;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zoom-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.68rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.media-image-container:hover .zoom-badge {
+  opacity: 1;
 }
 </style>

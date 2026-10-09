@@ -1,38 +1,36 @@
 <template>
-  <div class="bell-view min-h-[calc(100vh-120px)] flex flex-col bg-[#0f1117] text-white/90 selection:bg-teal-500/30 selection:text-teal-200">
+  <div class="bell-page-root">
     
     <!-- ツールバー -->
-    <header class="sticky top-0 z-30 bg-[#161822]/95 backdrop-blur border-b border-white/[0.08] shadow-lg px-4 py-3">
-      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+    <header class="bell-toolbar">
+      <div class="toolbar-inner">
         
         <!-- 左側: タイトル & フォルダ情報 -->
-        <div class="flex items-center space-x-3">
-          <div class="flex items-center space-x-2">
-            <span class="text-xl">🔔</span>
-            <span class="font-bold text-base tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-              SheepBell LQA
-            </span>
+        <div class="toolbar-section">
+          <div class="brand-title">
+            <span class="brand-icon">🔔</span>
+            <span class="brand-text">SheepBell LQA</span>
           </div>
 
-          <div v-if="folderName" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs font-mono">
+          <div v-if="folderName" class="folder-badge">
             <span>📁</span>
             <span>{{ folderName }}</span>
           </div>
 
-          <div v-if="loadedFileName" class="hidden sm:inline-flex text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-white/40 border border-white/5">
+          <div v-if="loadedFileName" class="file-badge">
             {{ loadedFileName }}
           </div>
         </div>
 
         <!-- 右側: アクションボタン群 -->
-        <div class="flex items-center space-x-2.5 text-xs">
+        <div class="toolbar-section actions-right">
           <!-- 最終保存時刻 -->
-          <span v-if="lastSavedTime" class="hidden md:inline text-white/40 text-[11px] mr-1">
+          <span v-if="lastSavedTime" class="save-time-text">
             最終保存: {{ lastSavedTime }}
           </span>
 
           <!-- 未保存変更バッジ -->
-          <span v-if="hasUnsavedChanges" class="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-medium animate-pulse flex items-center gap-1">
+          <span v-if="hasUnsavedChanges" class="unsaved-badge">
             <span>⚠️</span>
             <span>未保存の変更あり</span>
           </span>
@@ -41,7 +39,7 @@
           <button 
             @click="handleOpenFolderClick" 
             :disabled="isLoading"
-            class="px-3 py-1.5 rounded-lg bg-[#1a1d2e] hover:bg-[#252a3a] text-white/90 border border-white/10 hover:border-white/20 transition-all font-medium flex items-center gap-1.5 shadow-sm"
+            class="btn-tool"
           >
             <span>📂</span>
             <span>フォルダを開く</span>
@@ -52,7 +50,7 @@
             type="file" 
             webkitdirectory 
             directory 
-            class="hidden" 
+            class="hidden-file-input" 
             @change="handleFallbackFolderSelect" 
           />
 
@@ -60,35 +58,35 @@
           <button 
             v-if="issues.length > 0"
             @click="() => saveIssues({ reason: 'manual' })"
-            class="px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold shadow-md shadow-teal-900/30 transition-all flex items-center gap-1.5"
+            class="btn-save"
           >
             <span>💾</span>
-            <span>保存 <kbd class="text-[10px] opacity-75 font-mono">Ctrl+S</kbd></span>
+            <span>保存 <kbd>Ctrl+S</kbd></span>
           </button>
 
           <!-- エクスポートドロップダウン -->
-          <div v-if="issues.length > 0" class="relative">
+          <div v-if="issues.length > 0" class="export-dropdown-wrapper">
             <button 
               @click="showExportMenu = !showExportMenu"
-              class="px-3 py-1.5 rounded-lg bg-[#1a1d2e] hover:bg-[#252a3a] text-white/90 border border-white/10 hover:border-white/20 transition-all font-medium flex items-center gap-1.5 shadow-sm"
+              class="btn-tool"
             >
               <span>📤</span>
               <span>エクスポート ▾</span>
             </button>
             <div 
               v-if="showExportMenu" 
-              class="absolute right-0 mt-2 w-48 bg-[#161822] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-150"
+              class="dropdown-menu"
             >
               <button 
                 @click="exportCsv(); showExportMenu = false"
-                class="w-full text-left px-3.5 py-2 text-xs text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-2"
+                class="dropdown-item"
               >
                 <span>📊</span>
                 <span>標準 CSV (Excel互換)</span>
               </button>
               <button 
                 @click="downloadJson(); showExportMenu = false"
-                class="w-full text-left px-3.5 py-2 text-xs text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-2"
+                class="dropdown-item"
               >
                 <span>📋</span>
                 <span>標準 JSON</span>
@@ -99,7 +97,7 @@
           <!-- 使い方 -->
           <button 
             @click="showManualModal = true"
-            class="p-1.5 text-white/50 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            class="btn-help"
             title="使い方ガイド"
           >
             ❓
@@ -110,26 +108,26 @@
     </header>
 
     <!-- メインコンテンツ -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-4">
+    <main class="bell-main-container">
       
       <!-- 未読み込み状態: ウェルカムカード -->
       <div 
         v-if="issues.length === 0 && !isLoading"
-        class="text-center py-20 px-6 max-w-2xl mx-auto my-12 bg-[#161822]/80 border border-dashed border-white/10 rounded-3xl space-y-6 shadow-2xl"
+        class="card welcome-card"
       >
-        <div class="w-20 h-20 mx-auto rounded-3xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-4xl shadow-inner">
+        <div class="welcome-icon-circle">
           🔔
         </div>
-        <div class="space-y-2">
-          <h2 class="text-xl font-bold text-white">LQA issues フォルダを開いてください</h2>
-          <p class="text-xs text-white/50 leading-relaxed max-w-md mx-auto">
+        <div class="welcome-texts">
+          <h2>LQA issues フォルダを開いてください</h2>
+          <p>
             SheepBell CLI で出力された <code>lqa_issues.json</code>（または保存済み <code>lqa_issues_review.json</code>）や動画クリップ・画像が入っているフォルダを選択します。
           </p>
         </div>
         <div>
           <button 
             @click="handleOpenFolderClick"
-            class="px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-teal-900/40 transition-all inline-flex items-center gap-2"
+            class="btn-open-large"
           >
             <span>📂</span>
             <span>フォルダを選択する</span>
@@ -138,34 +136,34 @@
       </div>
 
       <!-- ローディング表示 -->
-      <div v-else-if="isLoading" class="text-center py-24 space-y-4">
-        <div class="animate-spin text-4xl">⏳</div>
-        <p class="text-xs text-white/60 font-medium">{{ loadingMessage }}</p>
+      <div v-else-if="isLoading" class="loading-box">
+        <div class="spinner-large">⏳</div>
+        <p class="loading-text">{{ loadingMessage }}</p>
       </div>
 
       <!-- 読み込み後: 検索・フィルタバー & 一覧 -->
-      <div v-else class="space-y-4">
+      <div v-else class="issues-view-wrapper">
         
         <!-- 検索・フィルタツールバー -->
-        <div class="bg-[#161822] border border-white/[0.08] rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
+        <div class="filter-bar">
           <!-- 検索インプット -->
-          <div class="flex items-center space-x-2.5 flex-1 min-w-[240px] max-w-md bg-[#141621] px-3 py-1.5 rounded-xl border border-white/5 focus-within:border-teal-500/50 transition-colors">
-            <span class="text-white/40 text-sm">🔍</span>
+          <div class="search-input-box">
+            <span class="search-icon">🔍</span>
             <input 
               v-model="searchQuery" 
               type="text" 
               placeholder="Description / Comment / ID を検索..." 
-              class="bg-transparent text-xs text-white/90 focus:outline-none w-full placeholder:text-white/30"
+              class="search-input"
             />
-            <button v-if="searchQuery" @click="searchQuery = ''" class="text-xs text-white/40 hover:text-white/80">✕</button>
+            <button v-if="searchQuery" @click="searchQuery = ''" class="btn-clear-search">✕</button>
           </div>
 
           <!-- コメント状態フィルタ -->
-          <div class="flex items-center space-x-2 text-xs">
-            <span class="text-white/40">コメント:</span>
+          <div class="filter-group">
+            <span class="filter-label">コメント:</span>
             <select 
               v-model="commentFilter"
-              class="bg-[#1a1d2e] border border-white/10 rounded-lg px-2.5 py-1 text-white/80 focus:outline-none focus:border-teal-500"
+              class="filter-select"
             >
               <option value="all">すべて</option>
               <option value="has_comment">記入あり</option>
@@ -174,11 +172,11 @@
           </div>
 
           <!-- タグフィルタ -->
-          <div v-if="availableTags.length > 0" class="flex items-center space-x-2 text-xs">
-            <span class="text-white/40">タグ:</span>
+          <div v-if="availableTags.length > 0" class="filter-group">
+            <span class="filter-label">タグ:</span>
             <select 
               v-model="selectedTag"
-              class="bg-[#1a1d2e] border border-white/10 rounded-lg px-2.5 py-1 text-white/80 focus:outline-none focus:border-teal-500"
+              class="filter-select"
             >
               <option value="all">すべて</option>
               <option v-for="tag in availableTags" :key="tag" :value="tag">{{ tag }}</option>
@@ -186,20 +184,18 @@
           </div>
 
           <!-- 全行一括メディア表示切替 -->
-          <div class="flex items-center space-x-2 text-xs">
-            <span class="text-white/40">メディア:</span>
-            <div class="inline-flex rounded-lg border border-white/10 p-0.5 bg-[#141621]">
+          <div class="filter-group">
+            <span class="filter-label">メディア:</span>
+            <div class="segmented-control">
               <button 
                 @click="setAllMediaView('image')"
-                :class="globalMediaView === 'image' ? 'bg-teal-500/20 text-teal-300 font-semibold' : 'text-white/60 hover:text-white'"
-                class="px-2.5 py-1 rounded-md transition-colors"
+                :class="['segment-btn', { 'segment-active': globalMediaView === 'image' }]"
               >
                 🖼️ 画像
               </button>
               <button 
                 @click="setAllMediaView('video')"
-                :class="globalMediaView === 'video' ? 'bg-teal-500/20 text-teal-300 font-semibold' : 'text-white/60 hover:text-white'"
-                class="px-2.5 py-1 rounded-md transition-colors"
+                :class="['segment-btn', { 'segment-active': globalMediaView === 'video' }]"
               >
                 🎬 動画
               </button>
@@ -207,50 +203,48 @@
           </div>
 
           <!-- 件数表示 -->
-          <div class="text-xs text-white/40">
-            表示中: <strong class="text-white/90">{{ filteredIssues.length }}</strong> / 全 {{ issues.length }} 件
+          <div class="count-badge">
+            表示中: <strong>{{ filteredIssues.length }}</strong> / 全 {{ issues.length }} 件
           </div>
         </div>
 
         <!-- Issue カードリスト -->
-        <div class="space-y-4">
+        <div class="issue-cards-list">
           <div 
             v-for="item in filteredIssues" 
             :key="item.id"
-            class="bg-[#161822] border border-white/[0.08] hover:border-white/[0.15] rounded-2xl p-5 shadow-xl transition-all space-y-4"
+            class="card issue-card"
           >
             <!-- カードヘッダー -->
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
-              <div class="flex items-center space-x-3">
-                <span class="px-2.5 py-1 rounded-lg bg-teal-500/15 text-teal-300 font-mono font-bold text-xs border border-teal-500/30">
+            <div class="issue-card-header">
+              <div class="issue-header-meta">
+                <span class="issue-id-badge">
                   #{{ item.id }}
                 </span>
-                <span v-if="item.file_prefix" class="text-xs font-mono text-white/50">
+                <span v-if="item.file_prefix" class="issue-prefix">
                   {{ item.file_prefix }}
                 </span>
-                <span v-if="item.issue_tag" class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                <span v-if="item.issue_tag" class="issue-tag-chip">
                   {{ item.issue_tag }}
                 </span>
-                <span class="text-xs font-mono text-white/40">
+                <span class="issue-timestamp">
                   ⏱️ {{ formatTime(item.timestamp_start) }} 〜 {{ formatTime(item.timestamp_end) }} ({{ getDuration(item.timestamp_start, item.timestamp_end) }}s)
                 </span>
               </div>
 
-              <!-- メディア切り替えミニトグル -->
-              <div class="flex items-center space-x-2 text-xs">
-                <div class="inline-flex rounded-lg border border-white/10 p-0.5 bg-[#141621]">
+              <!-- メディア切り替えミニトグル & 削除 -->
+              <div class="issue-header-controls">
+                <div class="segmented-control mini-control">
                   <button 
                     @click="setRowMediaMode(item.id, 'image')"
-                    :class="getRowMediaMode(item.id) === 'image' ? 'bg-teal-500/20 text-teal-300' : 'text-white/40 hover:text-white'"
-                    class="px-2 py-0.5 rounded text-[11px] transition-colors"
+                    :class="['segment-btn', { 'segment-active': getRowMediaMode(item.id) === 'image' }]"
                     :disabled="!item.snapshot_path"
                   >
                     画像
                   </button>
                   <button 
                     @click="setRowMediaMode(item.id, 'video')"
-                    :class="getRowMediaMode(item.id) === 'video' ? 'bg-teal-500/20 text-teal-300' : 'text-white/40 hover:text-white'"
-                    class="px-2 py-0.5 rounded text-[11px] transition-colors"
+                    :class="['segment-btn', { 'segment-active': getRowMediaMode(item.id) === 'video' }]"
                     :disabled="!item.clip_path"
                   >
                     動画
@@ -259,7 +253,7 @@
 
                 <button 
                   @click="removeIssue(item.id)"
-                  class="text-white/30 hover:text-rose-400 p-1 rounded-lg hover:bg-rose-500/10 transition-colors"
+                  class="btn-delete-issue"
                   title="このイシューを削除"
                 >
                   🗑️
@@ -268,10 +262,10 @@
             </div>
 
             <!-- カードボディ: 左右分割 (メディア & テキスト) -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <div class="issue-card-body">
               
-              <!-- 左: メディアプレビュー (4カラム) -->
-              <div class="lg:col-span-4">
+              <!-- 左: メディアプレビュー -->
+              <div class="media-column">
                 <div v-if="getRowMediaMode(item.id) === 'video' && item.clip_path">
                   <MediaVideo :filename="item.clip_path" :get-media-url="getMediaUrl" />
                 </div>
@@ -282,41 +276,37 @@
                     @click="openImageModal(item)"
                   />
                 </div>
-                <div v-else class="h-44 rounded-xl border border-white/5 bg-[#141621] flex items-center justify-center text-xs text-white/30">
+                <div v-else class="empty-media-box">
                   メディアファイルなし
                 </div>
               </div>
 
-              <!-- 右: Description & Comment (8カラム) -->
-              <div class="lg:col-span-8 space-y-3">
-                <!-- Description (Whisper 文字起こし / 自動検出) -->
-                <div>
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
-                      💬 自動抽出 / Whisper 文字起こし (Description)
-                    </span>
-                  </div>
+              <!-- 右: Description & Comment -->
+              <div class="text-column">
+                <!-- Description -->
+                <div class="text-group">
+                  <span class="text-group-label">
+                    💬 自動抽出 / Whisper 文字起こし (Description)
+                  </span>
                   <textarea 
                     v-model="item.description"
                     rows="3"
-                    class="w-full bg-[#141621] border border-white/10 rounded-xl p-3 text-xs text-white/80 focus:outline-none focus:border-teal-500 resize-y placeholder:text-white/30 font-sans leading-relaxed"
+                    class="issue-textarea"
                     placeholder="不具合箇所の文字起こしや説明..."
                     @input="markChanged"
                   ></textarea>
                 </div>
 
-                <!-- Comment (レビューコメント) -->
-                <div>
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="text-[11px] font-semibold text-teal-400 uppercase tracking-wider">
-                      ✍️ レビューコメント (Comment)
-                    </span>
-                  </div>
+                <!-- Comment -->
+                <div class="text-group">
+                  <span class="text-group-label comment-label">
+                    ✍️ レビューコメント (Comment)
+                  </span>
                   <textarea 
                     v-model="item.comment"
                     rows="3"
-                    class="w-full bg-[#141621] border border-teal-500/30 rounded-xl p-3 text-xs text-white/90 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-500/50 resize-y placeholder:text-white/30 font-sans leading-relaxed"
-                    placeholder="修正指示やコメントを入力..."
+                    class="issue-textarea comment-textarea"
+                    placeholder="修正指示やレビューコメントを入力..."
                     @input="markChanged"
                   ></textarea>
                 </div>
@@ -334,18 +324,18 @@
     <!-- 画像拡大モーダル (Lightbox) -->
     <div 
       v-if="imageModalOpen && activeItem" 
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      class="lightbox-overlay"
       @click.self="imageModalOpen = false"
     >
-      <div class="bg-[#161822] border border-white/10 rounded-2xl max-w-5xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        <div class="flex items-center justify-between px-5 py-3 border-b border-white/[0.08] bg-[#1a1d2e]">
-          <span class="font-bold text-xs text-white/90 font-mono">
+      <div class="lightbox-dialog">
+        <div class="lightbox-header">
+          <span class="lightbox-title">
             #{{ activeItem.id }} スナップショット ({{ activeItem.snapshot_path }})
           </span>
-          <button @click="imageModalOpen = false" class="text-white/40 hover:text-white text-base">✕</button>
+          <button @click="imageModalOpen = false" class="lightbox-close">✕</button>
         </div>
-        <div class="p-3 bg-black flex items-center justify-center flex-1 overflow-auto">
-          <img :src="activeMediaUrl" alt="Snapshot" class="max-w-full max-h-[75vh] object-contain" />
+        <div class="lightbox-body">
+          <img :src="activeMediaUrl" alt="Snapshot" class="lightbox-img" />
         </div>
       </div>
     </div>
@@ -353,24 +343,24 @@
     <!-- 使い方モーダル -->
     <div 
       v-if="showManualModal" 
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
+      class="lightbox-overlay"
       @click.self="showManualModal = false"
     >
-      <div class="bg-[#161822] border border-white/10 rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl p-6 space-y-4">
-        <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">📖</span>
-            <h3 class="font-bold text-sm text-white/90">SheepBell LQA Editor 使い方</h3>
+      <div class="manual-dialog">
+        <div class="manual-header">
+          <div class="manual-title">
+            <span>📖</span>
+            <h3>SheepBell LQA Editor 使い方</h3>
           </div>
-          <button @click="showManualModal = false" class="text-white/40 hover:text-white">✕</button>
+          <button @click="showManualModal = false" class="lightbox-close">✕</button>
         </div>
-        <div class="text-xs text-white/70 space-y-3 leading-relaxed">
+        <div class="manual-body">
           <p><strong>1. フォルダを開く:</strong> SheepBell パイプラインが出力した <code>issues/</code> フォルダを選択します。動画・画像・<code>lqa_issues.json</code> が一括で読み込まれます。</p>
           <p><strong>2. プレビュー & 校正:</strong> 画像と動画を切り替えて不具合箇所を確認。Whisper による文字起こしテキストの修正や、レビューコメントを記入します。</p>
-          <p><strong>3. 保存 & エクスポート:</strong> <kbd class="px-1 py-0.5 bg-[#141621] rounded border border-white/10">Ctrl+S</kbd> で <code>lqa_issues_review.json</code> に直接上書き保存されます。CSV や JSON でダウンロード出力も可能です。</p>
+          <p><strong>3. 保存 & エクスポート:</strong> <kbd>Ctrl+S</kbd> で <code>lqa_issues_review.json</code> に直接上書き保存されます。CSV や JSON でダウンロード出力も可能です。</p>
         </div>
-        <div class="pt-2 text-right">
-          <button @click="showManualModal = false" class="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold">
+        <div class="manual-footer">
+          <button @click="showManualModal = false" class="btn-primary-sm">
             閉じる
           </button>
         </div>
@@ -380,7 +370,7 @@
     <!-- トースト通知 -->
     <div 
       v-if="toast.show" 
-      class="fixed bottom-6 right-6 z-50 bg-[#161822] border border-teal-500/40 text-teal-200 text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5 duration-200 max-w-md break-all"
+      class="toast-notification"
     >
       <span>{{ toast.text }}</span>
     </div>
@@ -528,7 +518,746 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.bell-view {
-  font-family: inherit;
+.bell-page-root {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.bell-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(22, 24, 34, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  padding: 10px 16px;
+}
+
+.toolbar-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-icon {
+  font-size: 1.15rem;
+}
+
+.brand-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.folder-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  background: rgba(20, 184, 166, 0.15);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  color: #2dd4bf;
+  font-size: 0.75rem;
+  font-family: monospace;
+}
+
+.file-badge {
+  font-size: 0.7rem;
+  font-family: monospace;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-time-text {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.unsaved-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  font-size: 0.7rem;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.btn-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-tool:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.btn-save:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-save kbd {
+  font-size: 0.65rem;
+  opacity: 0.8;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.export-dropdown-wrapper {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  width: 190px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition);
+}
+
+.dropdown-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-help {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-xs);
+  font-size: 0.9rem;
+}
+
+.btn-help:hover {
+  color: var(--text-primary);
+}
+
+.bell-main-container {
+  flex: 1;
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.welcome-card {
+  text-align: center;
+  padding: 64px 24px;
+  max-width: 640px;
+  margin: 40px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.welcome-icon-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(20, 184, 166, 0.15);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+}
+
+.welcome-texts h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.welcome-texts p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-top: 6px;
+  max-width: 460px;
+}
+
+.welcome-texts code {
+  font-family: monospace;
+  background: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #2dd4bf;
+}
+
+.btn-open-large {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+  transition: all var(--transition);
+}
+
+.btn-open-large:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.loading-box {
+  text-align: center;
+  padding: 80px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.spinner-large {
+  font-size: 2.5rem;
+}
+
+.loading-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.issues-view-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filter-bar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.search-input-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 240px;
+  max-width: 380px;
+  background: var(--bg-input);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  transition: border-color var(--transition);
+}
+
+.search-input-box:focus-within {
+  border-color: var(--accent);
+}
+
+.search-icon {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.search-input:focus {
+  outline: none;
+}
+
+.btn-clear-search {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.filter-label {
+  color: var(--text-muted);
+}
+
+.filter-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.segmented-control {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  gap: 2px;
+}
+
+.segment-btn {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.segment-btn.segment-active {
+  background: rgba(20, 184, 166, 0.2);
+  color: #2dd4bf;
+  font-weight: 600;
+}
+
+.count-badge {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.count-badge strong {
+  color: var(--text-primary);
+}
+
+.issue-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.issue-card {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.issue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.issue-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.issue-id-badge {
+  font-size: 0.75rem;
+  font-family: monospace;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  background: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+  border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+.issue-prefix {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+.issue-tag-chip {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(6, 182, 212, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.issue-timestamp {
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+.issue-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-control {
+  font-size: 0.68rem;
+}
+
+.btn-delete-issue {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.btn-delete-issue:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.issue-card-body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .issue-card-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.media-column {
+  width: 100%;
+}
+
+.empty-media-box {
+  height: 180px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.text-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.text-group-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.comment-label {
+  color: #2dd4bf;
+}
+
+.issue-textarea {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color var(--transition);
+}
+
+.issue-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.comment-textarea {
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.comment-textarea:focus {
+  border-color: #2dd4bf;
+}
+
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.lightbox-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+.lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.lightbox-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--text-primary);
+}
+
+.lightbox-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.lightbox-close:hover {
+  color: var(--text-primary);
+}
+
+.lightbox-body {
+  padding: 8px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.lightbox-img {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+}
+
+.manual-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 560px;
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-lg);
+}
+
+.manual-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.manual-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.manual-title h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.manual-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.manual-body code, .manual-body kbd {
+  font-family: monospace;
+  background: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.manual-footer {
+  text-align: right;
+  padding-top: 8px;
+}
+
+.btn-primary-sm {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 6px 18px;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toast-notification {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  color: #34d399;
+  font-size: 0.75rem;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  max-width: 400px;
+  word-break: break-all;
 }
 </style>

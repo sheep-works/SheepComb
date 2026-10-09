@@ -1,17 +1,17 @@
 <template>
-  <div ref="containerRef" class="media-video-container relative rounded-xl border border-white/10 overflow-hidden bg-black flex items-center justify-center">
+  <div ref="containerRef" class="media-video-container">
     <video
       v-if="mediaUrl"
       :src="mediaUrl"
       controls
       preload="metadata"
-      class="w-full h-full object-contain outline-none bg-black"
+      class="video-player"
       playsinline
     ></video>
-    <div v-else class="flex flex-col items-center justify-center w-full h-full text-white/30 text-xs gap-2">
-      <span v-if="isLoading" class="animate-spin text-lg">⏳</span>
-      <span v-else class="text-2xl">🎬</span>
-      <span class="text-[11px] font-mono">{{ filename || '動画なし' }}</span>
+    <div v-else class="video-placeholder">
+      <span v-if="isLoading" class="spinner">⏳</span>
+      <span v-else class="placeholder-icon">🎬</span>
+      <span class="placeholder-filename">{{ filename || '動画なし' }}</span>
     </div>
   </div>
 </template>
@@ -70,7 +70,46 @@ onUnmounted(() => {
 
 <style scoped>
 .media-video-container {
+  position: relative;
   width: 100%;
   height: 200px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  outline: none;
+  background: #000;
+}
+
+.video-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.placeholder-icon {
+  font-size: 1.8rem;
+}
+
+.placeholder-filename {
+  font-family: monospace;
+  font-size: 0.7rem;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

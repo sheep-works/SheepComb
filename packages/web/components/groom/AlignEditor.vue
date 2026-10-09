@@ -1,35 +1,35 @@
 <template>
-  <div class="relative w-full border border-white/10 rounded-xl overflow-hidden bg-[#141621] focus-within:border-teal-500/80 transition-colors shadow-inner flex flex-col">
+  <div class="align-editor-container">
     <!-- エディタヘッダー -->
-    <div class="flex items-center justify-between px-3.5 py-1.5 bg-[#161822] border-b border-white/[0.08] text-xs font-mono text-white/50 select-none">
-      <div class="flex items-center space-x-2">
-        <span class="w-2 h-2 rounded-full shadow-sm" :class="isSource ? 'bg-cyan-400 shadow-cyan-500/40' : 'bg-teal-400 shadow-teal-500/40'"></span>
-        <span class="font-semibold text-white/80">{{ label }}</span>
-        <span v-if="pipeCount > 0" class="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans border border-amber-500/30">
+    <div class="editor-header">
+      <div class="header-left">
+        <span class="indicator-dot" :class="isSource ? 'dot-source' : 'dot-target'"></span>
+        <span class="header-label">{{ label }}</span>
+        <span v-if="pipeCount > 0" class="pipe-count-badge">
           {|} × {{ pipeCount }}
         </span>
       </div>
       
-      <div class="flex items-center space-x-2">
+      <div class="header-right">
         <!-- 選択範囲または全体の {|} を改行に置換するクイックボタン -->
         <button 
           v-if="pipeCount > 0"
           @click="replacePipeWithNewline"
           :title="hasSelection ? '選択範囲内の {|} を改行に置換' : 'このエディタ内のすべての {|} を改行に置換'"
-          class="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 font-sans transition-colors flex items-center gap-1"
+          class="btn-pipe-replace"
         >
           <span>↵ {|} を改行に</span>
-          <span v-if="hasSelection" class="text-[9px] bg-amber-400/30 px-1 rounded font-mono">選択部</span>
+          <span v-if="hasSelection" class="selection-chip">選択部</span>
         </button>
 
-        <span class="text-[11px] px-2 py-0.5 rounded bg-[#1a1d2e] text-white/60 font-mono border border-white/5">
+        <span class="line-count-badge">
           {{ lineCount }} 行
         </span>
       </div>
     </div>
 
     <!-- CodeMirror マウントコンテナ -->
-    <div ref="editorContainer" class="cm-wrapper flex-1 text-sm font-mono leading-relaxed cursor-text min-h-[90px]"></div>
+    <div ref="editorContainer" class="cm-wrapper"></div>
   </div>
 </template>
 
@@ -102,7 +102,7 @@ const markerPlugin = ViewPlugin.fromClass(class {
   decorations: v => v.decorations
 });
 
-// CodeMirror カスタムテーマ (Teal / Emerald Dark)
+// CodeMirror カスタムテーマ
 const customTheme = EditorView.theme({
   '&': {
     height: '100%',
@@ -112,11 +112,11 @@ const customTheme = EditorView.theme({
   },
   '.cm-content': {
     padding: '10px 14px',
-    caretColor: '#14b8a6',
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    caretColor: '#10b981',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
   },
   '&.cm-focused .cm-cursor': {
-    borderLeftColor: '#14b8a6',
+    borderLeftColor: '#10b981',
     borderLeftWidth: '2px',
   },
   '.cm-gutters': {
@@ -127,11 +127,11 @@ const customTheme = EditorView.theme({
     userSelect: 'none',
   },
   '.cm-activeLine': {
-    backgroundColor: 'rgba(20, 184, 166, 0.06)',
+    backgroundColor: 'rgba(16, 185, 129, 0.06)',
   },
   '.cm-activeLineGutter': {
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
-    color: '#2dd4bf',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    color: '#34d399',
     fontWeight: 'bold',
   },
   '.cm-line': {
@@ -139,27 +139,25 @@ const customTheme = EditorView.theme({
     lineHeight: '1.6',
   },
   '.cm-pipe-badge': {
-    backgroundColor: '#f59e0b25',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
     color: '#fbbf24',
-    border: '1px solid #f59e0b50',
+    border: '1px solid rgba(245, 158, 11, 0.4)',
     borderRadius: '3px',
-    padding: '1px 3px',
+    padding: '1px 4px',
     fontWeight: 'bold',
     fontSize: '11px',
-    letterSpacing: '0.5px',
   },
   '.cm-slash-badge': {
-    backgroundColor: 'rgba(20, 184, 166, 0.2)',
-    color: '#2dd4bf',
-    border: '1px solid rgba(20, 184, 166, 0.4)',
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    color: '#34d399',
+    border: '1px solid rgba(16, 185, 129, 0.4)',
     borderRadius: '3px',
-    padding: '1px 3px',
+    padding: '1px 4px',
     fontWeight: 'bold',
     fontSize: '11px',
   }
 });
 
-// ショートカットキー設定
 const customKeymap = keymap.of([
   {
     key: 'Tab',
@@ -296,6 +294,111 @@ onBeforeUnmount(() => {
   }
 });
 </script>
+
+<style scoped>
+.align-editor-container {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-input);
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--transition);
+}
+
+.align-editor-container:focus-within {
+  border-color: var(--accent);
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-source {
+  background: #06b6d4;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+}
+
+.dot-target {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.header-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pipe-count-badge {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.btn-pipe-replace {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-pipe-replace:hover {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+.selection-chip {
+  font-size: 0.6rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(245, 158, 11, 0.3);
+}
+
+.line-count-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.cm-wrapper {
+  flex: 1;
+  min-height: 100px;
+  cursor: text;
+}
+</style>
 
 <style>
 .cm-wrapper .cm-editor {
