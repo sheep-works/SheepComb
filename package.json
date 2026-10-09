@@ -1,0 +1,21 @@
+{
+  "name": "sheep-comb",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "packageManager": "pnpm@11.5.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @sheep-comb/web dev",
+    "build": "pnpm --filter @sheep-comb/web build",
+    "generate": "pnpm --filter @sheep-comb/web generate",
+    "preview": "pnpm --filter @sheep-comb/web preview",
+    "dev:groom": "pnpm --filter @sheep-comb/groom dev",
+    "dev:bell": "pnpm --filter @sheep-comb/bell dev"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

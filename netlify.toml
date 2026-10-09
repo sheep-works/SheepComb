@@ -1,0 +1,26 @@
+[build]
+  command = "pnpm --filter @sheep-comb/web generate"
+  publish = "packages/web/.output/public"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA ルーティングのためのリダイレクト設定 (/app/* -> /app/index.html)
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
+
+# ルートアクセスを /app/ に転送
+[[redirects]]
+  from = "/"
+  to = "/app/"
+  status = 301
+  force = true
+
+# WASM ファイルの配信ヘッダー
+[[headers]]
+  for = "*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
