@@ -74,16 +74,14 @@ const utilityTools = computed(() => [
     label: 'SheepGroom', 
     desc: 'Word/PPTX/Excel等の文書から高精度に対訳を作成・整列', 
     icon: GroomIcon,
-    tag: 'Alignment',
-    badgeClass: 'badge-teal'
+    tag: 'Alignment'
   },
   { 
     to: '/bell', 
     label: 'SheepBell Viewer', 
     desc: 'LQA課題、録画クリップ、音声文字起こしを一覧プレビュー', 
     icon: BellIcon,
-    tag: 'LQA',
-    badgeClass: 'badge-amber'
+    tag: 'LQA'
   },
   { 
     to: '/tools/check-percentage', 
@@ -134,7 +132,7 @@ const playgroundLinks = computed(() => [
       <!-- 左カラム: ワークフロー (Shuttle Pipeline) -->
       <section class="column-section workflow-column">
         <div class="section-badge-header">
-          <span class="column-pill pill-blue">Pipeline</span>
+          <span class="column-pill">Pipeline</span>
           <h2 class="column-heading">
             <Database :size="20" />
             <span>{{ $t('index.category_shuttle', 'ワークフロー (Shuttle)') }}</span>
@@ -165,7 +163,7 @@ const playgroundLinks = computed(() => [
       <!-- 右カラム: ユーティリティ & 支援ツール -->
       <section class="column-section tools-column">
         <div class="section-badge-header">
-          <span class="column-pill pill-purple">Utilities</span>
+          <span class="column-pill">Utilities</span>
           <h2 class="column-heading">
             <Split :size="20" />
             <span>{{ $t('index.category_tools', 'ツール & 支援機能') }}</span>
@@ -184,7 +182,7 @@ const playgroundLinks = computed(() => [
               <div class="card-icon">
                 <component :is="tool.icon" :size="20" />
               </div>
-              <span class="tool-tag" :class="tool.badgeClass">{{ tool.tag }}</span>
+              <span class="tool-tag">{{ tool.tag }}</span>
             </div>
             <div class="card-text">
               <h3>{{ tool.label }}</h3>
@@ -257,7 +255,7 @@ const playgroundLinks = computed(() => [
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+  background: linear-gradient(135deg, #2dd4bf 0%, #38bdf8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -303,18 +301,9 @@ const playgroundLinks = computed(() => [
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
-}
-
-.pill-blue {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.pill-purple {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(45, 212, 191, 0.12);
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.25);
 }
 
 .column-heading {
@@ -355,7 +344,7 @@ const playgroundLinks = computed(() => [
 
 .timeline-card:hover {
   background: #24334a;
-  border-color: rgba(56, 189, 248, 0.4);
+  border-color: rgba(45, 212, 191, 0.4);
   transform: translateX(4px);
 }
 
@@ -363,8 +352,8 @@ const playgroundLinks = computed(() => [
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
+  background: rgba(45, 212, 191, 0.15);
+  color: #2dd4bf;
   font-size: 0.85rem;
   font-weight: 800;
   display: flex;
@@ -378,16 +367,17 @@ const playgroundLinks = computed(() => [
   height: 42px;
   border-radius: 0.6rem;
   background: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  color: #cbd5e1;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .timeline-card:hover .card-icon {
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.15);
+  color: #2dd4bf;
+  background: rgba(45, 212, 191, 0.15);
 }
 
 .card-text {
@@ -414,7 +404,7 @@ const playgroundLinks = computed(() => [
 }
 
 .timeline-card:hover .step-arrow {
-  color: #38bdf8;
+  color: #2dd4bf;
   transform: translateX(3px);
 }
 
@@ -444,7 +434,7 @@ const playgroundLinks = computed(() => [
 
 .tool-card-box:hover {
   background: #24334a;
-  border-color: rgba(168, 85, 247, 0.4);
+  border-color: rgba(45, 212, 191, 0.4);
   transform: translateY(-2px);
 }
 
@@ -464,30 +454,28 @@ const playgroundLinks = computed(() => [
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
 .tool-card-box:hover .card-icon {
-  color: #c084fc;
-  background: rgba(168, 85, 247, 0.15);
+  color: #2dd4bf;
+  background: rgba(45, 212, 191, 0.15);
 }
 
 .tool-tag {
   font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 0.4rem;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
   color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.02em;
 }
 
-.badge-teal {
-  background: rgba(20, 184, 166, 0.15) !important;
-  color: #2dd4bf !important;
-}
-
-.badge-amber {
-  background: rgba(245, 158, 11, 0.15) !important;
-  color: #fbbf24 !important;
+.tool-card-box:hover .tool-tag {
+  color: #cbd5e1;
+  border-color: rgba(45, 212, 191, 0.25);
 }
 
 .tool-card-box .card-text h3 {
@@ -532,7 +520,7 @@ const playgroundLinks = computed(() => [
 
 /* 下部: あそび場セクション */
 .playground-section {
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(30, 41, 59, 0.4);
   border: 1px dashed rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   padding: 2rem;
@@ -576,8 +564,8 @@ const playgroundLinks = computed(() => [
 }
 
 .play-card-box:hover {
-  background: #252b42;
-  border-color: rgba(244, 63, 94, 0.4);
+  background: #24334a;
+  border-color: rgba(45, 212, 191, 0.4);
   transform: translateY(-2px);
 }
 
@@ -585,12 +573,13 @@ const playgroundLinks = computed(() => [
   width: 48px;
   height: 48px;
   border-radius: 0.75rem;
-  background: rgba(244, 63, 94, 0.15);
-  color: #fb7185;
+  background: rgba(45, 212, 191, 0.15);
+  color: #2dd4bf;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .play-content {
@@ -616,7 +605,7 @@ const playgroundLinks = computed(() => [
 }
 
 .play-card-box:hover .play-arrow {
-  color: #fb7185;
+  color: #2dd4bf;
   transform: translateX(4px);
 }
 </style>
