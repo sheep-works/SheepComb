@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2, ChevronDown, Database, Layers, Zap, Code2, Cloud, Split, Search, BookOpen, Hammer, Percent, Scissors, Gamepad2, Sparkles } from 'lucide-vue-next'
+import { Trash2, ChevronDown, Database, Layers, Zap, Code2, Cloud, Split, Search, BookOpen, Hammer, Percent, Scissors, Gamepad2, Sparkles, Bell } from 'lucide-vue-next'
 import { useShuttleStore } from '../stores/shuttleStore'
 import { useI18n } from 'vue-i18n'
 
@@ -131,6 +131,21 @@ const handleLocaleChange = (event: Event) => {
               <div class="item-text">
                 <span class="label">{{ $t('header.nav.chunk', 'テキストチャンク') }}</span>
                 <span class="desc">{{ $t('header.nav.chunk_desc', 'テキストを指定サイズで分割') }}</span>
+              </div>
+            </NuxtLink>
+            <div class="dropdown-divider"></div>
+            <NuxtLink to="/groom" class="dropdown-item" active-class="active">
+              <Scissors :size="14" />
+              <div class="item-text">
+                <span class="label">SheepGroom</span>
+                <span class="desc">対訳作成・Officeアライメント</span>
+              </div>
+            </NuxtLink>
+            <NuxtLink to="/bell" class="dropdown-item" active-class="active">
+              <Bell :size="14" />
+              <div class="item-text">
+                <span class="label">SheepBell</span>
+                <span class="desc">LQA課題 & クリップビューアー</span>
               </div>
             </NuxtLink>
           </div>
