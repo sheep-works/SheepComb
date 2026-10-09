@@ -1,4 +1,4 @@
 [submodule "modules/SheepShuttle"]
 	path = modules/SheepShuttle
-	url = https://github.com/sheep-works/SheepCombV2.git
-	branch = shuttle
+	url = https://github.com/sheep-works/SheepShuttle.git
+	branch = main
