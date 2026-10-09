@@ -5,7 +5,7 @@ export default defineNuxtConfig({
 
   devtools: { enabled: false },
   app: {
-    baseURL: '/',
+    baseURL: '/app/',
     head: {
       link: [
         { rel: 'canonical', href: 'https://lambuage.com/app' }
