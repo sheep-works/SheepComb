@@ -1,6 +1,6 @@
 [build]
-  command = "pnpm --filter @sheep-comb/web generate"
-  publish = "packages/web/.output/public"
+  command = "pnpm generate"
+  publish = ".output/public"
 
 [build.environment]
   NODE_VERSION = "22"

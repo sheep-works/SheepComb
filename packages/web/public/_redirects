@@ -1,0 +1,4 @@
+/app/_nuxt/*  /_nuxt/:splat  200
+/app/*        /:splat        200
+/app/*        /index.html    200
+/             /app/          301!
