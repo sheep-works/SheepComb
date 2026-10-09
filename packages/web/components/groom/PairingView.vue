@@ -12,12 +12,18 @@
         ファイルペアリング & アライン
       </h1>
       <p class="header-desc">
-        原文ファイルと訳文ファイルをマッチングし、一括で対訳エディタへ展開します。Excel (.xlsx) や TSV、テキストを直接読み込んで整列・校正できます。
+        原文ファイルと訳文ファイルをマッチングし、一括で対訳エディタへ展開します。Word (.docx)、PowerPoint (.pptx)、Excel (.xlsx)、テキストをブラウザ上で直接解析・整列します。
       </p>
     </div>
 
     <!-- メインカード: ペアリングテーブル -->
-    <div class="card pairing-card">
+    <div 
+      class="card pairing-card"
+      :class="{ 'card-dragover': isCardDragging }"
+      @dragover.prevent="isCardDragging = true"
+      @dragleave.prevent="isCardDragging = false"
+      @drop.prevent="onCardDrop"
+    >
       
       <!-- カード上部ツールバー -->
       <div class="card-toolbar">
@@ -25,7 +31,7 @@
           <span class="toolbar-icon">📋</span>
           <div>
             <h2 class="toolbar-title">ファイル対応テーブル</h2>
-            <p class="toolbar-desc">左右のファイルが正しくペアになっているか確認・調整してください</p>
+            <p class="toolbar-desc">左右のファイルが正しくペアになっているか確認・調整してください (ファイルを直接ドロップ可能)</p>
           </div>
         </div>
 
@@ -76,9 +82,13 @@
               <!-- 原文ファイル列 -->
               <td class="td-file">
                 <div class="file-box-wrapper">
-                  <div class="file-info-box box-src">
+                  <div 
+                    class="file-info-box box-src"
+                    @dragover.prevent
+                    @drop.prevent="(e) => onSingleFileDrop(e, idx, 'src')"
+                  >
                     <p class="file-name" :title="pair.srcPath">
-                      {{ getFileName(pair.srcPath) || '（未選択）' }}
+                      {{ getFileName(pair.srcPath) || '（未選択 - クリックまたはドロップ）' }}
                     </p>
                     <p v-if="pair.srcFile" class="file-size">
                       {{ (pair.srcFile.size / 1024).toFixed(1) }} KB
@@ -86,7 +96,7 @@
                   </div>
                   <label class="btn-select-file btn-select-src" title="ファイルを選択">
                     📂
-                    <input type="file" class="hidden-file-input" accept=".xlsx,.xls,.tsv,.csv,.txt" @change="(e) => onSingleFileSelect(e, idx, 'src')" />
+                    <input type="file" class="hidden-file-input" accept=".xlsx,.xls,.tsv,.csv,.txt,.docx,.pptx" @change="(e) => onSingleFileSelect(e, idx, 'src')" />
                   </label>
                 </div>
               </td>
@@ -94,9 +104,13 @@
               <!-- 訳文ファイル列 -->
               <td class="td-file">
                 <div class="file-box-wrapper">
-                  <div class="file-info-box box-tgt">
+                  <div 
+                    class="file-info-box box-tgt"
+                    @dragover.prevent
+                    @drop.prevent="(e) => onSingleFileDrop(e, idx, 'tgt')"
+                  >
                     <p class="file-name" :title="pair.tgtPath">
-                      {{ getFileName(pair.tgtPath) || '（未選択）' }}
+                      {{ getFileName(pair.tgtPath) || '（未選択 - クリックまたはドロップ）' }}
                     </p>
                     <p v-if="pair.tgtFile" class="file-size">
                       {{ (pair.tgtFile.size / 1024).toFixed(1) }} KB
@@ -104,7 +118,7 @@
                   </div>
                   <label class="btn-select-file btn-select-tgt" title="ファイルを選択">
                     📂
-                    <input type="file" class="hidden-file-input" accept=".xlsx,.xls,.tsv,.csv,.txt" @change="(e) => onSingleFileSelect(e, idx, 'tgt')" />
+                    <input type="file" class="hidden-file-input" accept=".xlsx,.xls,.tsv,.csv,.txt,.docx,.pptx" @change="(e) => onSingleFileSelect(e, idx, 'tgt')" />
                   </label>
                 </div>
               </td>
@@ -169,6 +183,7 @@
 import { ref, computed } from 'vue';
 import type { SheetData, FilePair } from '~/types/groom';
 import { parseXlsx } from '~/utils/groomParser';
+import { extractFromFile, pairExtractedItems } from '~/utils/officeExtractor';
 
 const emit = defineEmits<{
   (e: 'start-align', sheets: SheetData[]): void;
@@ -181,6 +196,7 @@ const pairs = ref<FilePair[]>([
 ]);
 
 const isLoading = ref(false);
+const isCardDragging = ref(false);
 
 const validPairsCount = computed(() => {
   return pairs.value.filter(p => !!p.srcPath && !!p.tgtPath).length;
@@ -217,12 +233,30 @@ function onSingleFileSelect(e: Event, index: number, side: 'src' | 'tgt') {
   }
 }
 
-function handleBatchFileSelect(e: Event) {
-  const input = e.target as HTMLInputElement;
-  if (!input.files || input.files.length === 0) return;
-  const fileList = Array.from(input.files);
+function onSingleFileDrop(e: DragEvent, index: number, side: 'src' | 'tgt') {
+  if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+  const file = e.dataTransfer.files[0];
+  if (side === 'src') {
+    pairs.value[index].srcPath = file.name;
+    pairs.value[index].srcFile = file;
+  } else {
+    pairs.value[index].tgtPath = file.name;
+    pairs.value[index].tgtFile = file;
+  }
+  emit('show-toast', `📄 ${file.name} を設定しました`);
+}
 
-  if (fileList.length === 1 && fileList[0].name.endsWith('.xlsx')) {
+function onCardDrop(e: DragEvent) {
+  isCardDragging.value = false;
+  if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+  processFileList(Array.from(e.dataTransfer.files));
+}
+
+function processFileList(fileList: File[]) {
+  if (fileList.length === 0) return;
+
+  // 単一の Excel (.xlsx) で複数シートがある場合は直接アラインへ
+  if (fileList.length === 1 && fileList[0].name.toLowerCase().endsWith('.xlsx')) {
     fileList[0].arrayBuffer().then(buf => {
       parseXlsx(buf).then(sheets => {
         if (sheets.length > 0) {
@@ -267,8 +301,14 @@ function handleBatchFileSelect(e: Event) {
   }
 }
 
+function handleBatchFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement;
+  if (!input.files || input.files.length === 0) return;
+  processFileList(Array.from(input.files));
+}
+
 async function startAllAlign() {
-  const validPairs = pairs.value.filter(p => !!p.srcPath && !!p.tgtPath);
+  const validPairs = pairs.value.filter(p => !!p.srcPath && !!p.tgtPath && (!!p.srcFile || !!p.tgtFile));
   if (validPairs.length === 0) return;
 
   isLoading.value = true;
@@ -277,40 +317,25 @@ async function startAllAlign() {
 
     for (let idx = 0; idx < validPairs.length; idx++) {
       const pair = validPairs[idx];
-      const sheetName = `Pair ${idx + 1}`;
+      const sheetName = getFileName(pair.srcPath) || `Pair ${idx + 1}`;
 
-      let srcText = '';
-      let tgtText = '';
+      const srcItems = pair.srcFile ? await extractFromFile(pair.srcFile) : [];
+      const tgtItems = pair.tgtFile ? await extractFromFile(pair.tgtFile) : [];
 
-      if (pair.srcFile) {
-        srcText = await pair.srcFile.text();
+      const sheetData = pairExtractedItems(srcItems, tgtItems, sheetName);
+      if (sheetData.blocks.length > 0) {
+        sheets.push(sheetData);
       }
-      if (pair.tgtFile) {
-        tgtText = await pair.tgtFile.text();
-      }
-
-      const srcLines = srcText ? srcText.split(/\r?\n/) : [];
-      const tgtLines = tgtText ? tgtText.split(/\r?\n/) : [];
-
-      const blocks = [{
-        id: `block-${Date.now()}-${idx}`,
-        sectionName: pair.srcPath ? getFileName(pair.srcPath) : `Block 1`,
-        sourceText: srcLines.join('\n'),
-        targetText: tgtLines.join('\n'),
-      }];
-
-      sheets.push({
-        sheetName,
-        blocks
-      });
     }
 
     if (sheets.length > 0) {
       emit('start-align', sheets);
-      emit('show-toast', `⚡ ${sheets.length} 件のペアを展開しました`);
+      emit('show-toast', `⚡ ${sheets.length} 件のペアをアラインエディタへ展開しました`);
+    } else {
+      emit('show-toast', '⚠️ テキストを抽出できませんでした');
     }
   } catch (err: any) {
-    console.error(err);
+    console.error('Align extraction error:', err);
     emit('show-toast', `❌ エラー: ${err.message || err}`);
   } finally {
     isLoading.value = false;
@@ -372,6 +397,13 @@ async function startAllAlign() {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.card-dragover {
+  border-color: var(--accent) !important;
+  background-color: rgba(20, 184, 166, 0.06) !important;
+  box-shadow: 0 0 24px rgba(20, 184, 166, 0.2);
 }
 
 .card-toolbar {

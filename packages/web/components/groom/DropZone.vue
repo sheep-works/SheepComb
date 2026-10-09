@@ -31,7 +31,7 @@
           <input 
             ref="fileInput" 
             type="file" 
-            accept=".xlsx,.xls,.tsv,.csv,.txt" 
+            accept=".xlsx,.xls,.tsv,.csv,.txt,.docx,.pptx" 
             class="file-input-hidden" 
             @change="handleFileSelect" 
           />
@@ -40,7 +40,7 @@
           </div>
           <div class="drop-texts">
             <p class="drop-main-text">
-              Excelファイル（Files.xlsx など）や TSV をドラッグ＆ドロップ
+              Excelファイル（Files.xlsx など）や Word / PPTX をドラッグ＆ドロップ
             </p>
             <p class="drop-sub-text">またはクリックしてファイルを選択</p>
           </div>

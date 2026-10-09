@@ -113,6 +113,7 @@
 import { ref, computed, nextTick } from 'vue';
 import type { SheetData, AlignBlock } from '~/types/groom';
 import { parseXlsx, parseTsvOrText, exportToXlsx, exportAllSheetsToXlsx, exportToPaddedTsv } from '~/utils/groomParser';
+import { extractFromFile, pairExtractedItems } from '~/utils/officeExtractor';
 import PairingView from '~/components/groom/PairingView.vue';
 import Toolbar from '~/components/groom/Toolbar.vue';
 import BlockCard from '~/components/groom/BlockCard.vue';
@@ -238,6 +239,20 @@ function handleStartAlign(extractedSheets: SheetData[]) {
 
 async function handleFileLoaded(file: File) {
   try {
+    const fileName = file.name.toLowerCase();
+    if (fileName.endsWith('.docx') || fileName.endsWith('.pptx')) {
+      const items = await extractFromFile(file);
+      const sheetData = pairExtractedItems(items, [], file.name);
+      if (sheetData.blocks.length > 0) {
+        sheets.value = [sheetData];
+        activeSheetIndex.value = 0;
+        showImporter.value = false;
+        currentView.value = 'editor';
+        showToast(`📄 ${file.name} から ${sheetData.blocks.length} ブロックを読み込みました`);
+        return;
+      }
+    }
+
     const buffer = await file.arrayBuffer();
     const parsedSheets = await parseXlsx(buffer);
     if (parsedSheets.length > 0) {
@@ -249,9 +264,9 @@ async function handleFileLoaded(file: File) {
     } else {
       showToast('⚠️ 有効なシートデータが見つかりませんでした');
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
-    showToast('❌ ファイル読み込みに失敗しました');
+    showToast(`❌ ファイル読み込みに失敗しました: ${err.message || err}`);
   }
 }
 
