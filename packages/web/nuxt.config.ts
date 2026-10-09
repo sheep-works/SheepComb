@@ -76,6 +76,7 @@ export default defineNuxtConfig({
         'xlsx',
         'difflib-ts',
         'flexsearch',
+        '@xmldom/xmldom',
       ]
     }
   },
