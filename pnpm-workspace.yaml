@@ -1,3 +1,17 @@
 packages:
   - 'packages/*'
   - 'modules/SheepShuttle/packages/*'
+
+allowBuilds:
+  '@google/genai': true
+  '@parcel/watcher': true
+  better-sqlite3: true
+  electron: true
+  esbuild: true
+  protobufjs: true
+  puppeteer: false
+  vue-demi: true
+
+minimumReleaseAgeExclude:
+  - '@ai-sdk/anthropic@3.0.115'
+  - '@ai-sdk/provider-utils@4.0.50'

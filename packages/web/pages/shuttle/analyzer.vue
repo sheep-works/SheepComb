@@ -11,7 +11,7 @@ definePageMeta({
 import { ref, computed } from 'vue'
 import { FileUp, Trash2, Play, CheckCircle, AlertCircle, Database, Book, Layers, Download, ArrowRight, Settings2 } from 'lucide-vue-next'
 import { useShuttleStore } from '../../stores/shuttleStore'
-import { initWasm, getWasm } from '@sheep-family/core/wasm'
+import { initWasm, getWasm } from '~/utils/wasm'
 import { FileIO } from '../../utils/fileIO'
 import { useI18n } from 'vue-i18n'
 

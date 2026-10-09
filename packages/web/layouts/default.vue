@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { initWasm } from '@sheep-family/core/wasm'
+import { initWasm } from '~/utils/wasm'
 
 const isWasmReady = ref(false)
 

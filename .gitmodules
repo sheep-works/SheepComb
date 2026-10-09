@@ -1,0 +1,3 @@
+[submodule "modules/SheepShuttle"]
+	path = modules/SheepShuttle
+	url = ../SheepShuttle
