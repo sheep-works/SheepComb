@@ -7,7 +7,7 @@ declare global {
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
-  const measurementId = (config.public.gaMeasurementId as string) || 'G-YC7B6J9KQW'
+  const measurementId = (config.public.gaMeasurementId as string) || 'G-PFT0GHJFSL'
 
   if (typeof window === 'undefined') return
 

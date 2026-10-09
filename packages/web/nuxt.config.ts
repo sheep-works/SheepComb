@@ -12,11 +12,15 @@ export default defineNuxtConfig({
       ],
       script: [
         {
-          src: 'https://www.googletagmanager.com/gtag/js?id=G-YC7B6J9KQW',
+          src: 'https://www.googletagmanager.com/gtag/js?id=G-PFT0GHJFSL',
           async: true
         },
         {
-          innerHTML: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YC7B6J9KQW');`
+          innerHTML: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-PFT0GHJFSL');`
+        },
+        {
+          id: '_bownow_ts',
+          innerHTML: `var _bownow_ts = document.createElement('script');\n_bownow_ts.charset = 'utf-8';\n_bownow_ts.src = 'https://contents.bownow.jp/js/UTC_0b6e8f464ee2de6eb03f/trace.js';\ndocument.getElementsByTagName('head')[0].appendChild(_bownow_ts);`
         }
       ]
     }
@@ -60,7 +64,7 @@ export default defineNuxtConfig({
       apiPort: process.env.NUXT_PUBLIC_API_PORT || '',
       apiKey: process.env.NUXT_PUBLIC_API_KEY,  // 追加
       apiDev: process.env.NUXT_PUBLIC_API_DEV,
-      gaMeasurementId: process.env.NUXT_PUBLIC_GA_MEASUREMENT_ID || 'G-YC7B6J9KQW'
+      gaMeasurementId: process.env.NUXT_PUBLIC_GA_MEASUREMENT_ID || 'G-PFT0GHJFSL'
     }
   },
   devServer: {
