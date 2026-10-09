@@ -77,6 +77,9 @@ export default defineNuxtConfig({
         'difflib-ts',
         'flexsearch',
         '@xmldom/xmldom',
+        '@codemirror/view',
+        '@codemirror/state',
+        '@codemirror/commands',
       ]
     }
   },
