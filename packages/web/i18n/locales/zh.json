@@ -3,7 +3,31 @@
     "save": "保存",
     "cancel": "取消",
     "reset_confirm": "确定要重置所有项目数据吗？此操作无法撤销。",
-    "reset_project": "重置项目"
+    "reset_project": "重置项目",
+    "reset_all_title": "重置所有数据",
+    "reset_all_confirm": "确定要重置SheepComb中的所有工作数据（Shuttle/Diff等）吗？此操作无法撤销。",
+    "reset_all_success": "已成功重置所有工作数据",
+    "clear_modal": {
+      "title": "数据清除与重置",
+      "subtitle": "请选择要删除的数据类别并点击删除。此操作无法撤销。",
+      "toggle_unlock": "解除删除锁定",
+      "btn_delete": "删除",
+      "all_title": "完全清除 (所有数据)",
+      "all_desc": "重置保存在此浏览器中的所有工具工作数据和本地缓存",
+      "shuttle_title": "SheepShuttle 数据",
+      "shuttle_desc": "解析器、分析器、管理与API流程的保存数据",
+      "groom_title": "SheepGroom 数据",
+      "groom_desc": "双语对齐（Alignment）项目数据",
+      "bell_title": "SheepBell 数据",
+      "bell_desc": "LQA验证与规则检查数据",
+      "others_title": "其他工具数据",
+      "others_desc": "文本差异对比、语料检索、概率检查等工具数据",
+      "msg_all_cleared": "已成功清除所有工作数据",
+      "msg_shuttle_cleared": "已清除SheepShuttle数据",
+      "msg_groom_cleared": "已清除SheepGroom数据",
+      "msg_bell_cleared": "已清除SheepBell数据",
+      "msg_others_cleared": "已清除其他工具数据"
+    }
   },
   "header": {
     "nav": {

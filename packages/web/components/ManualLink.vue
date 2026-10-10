@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, ExternalLink } from 'lucide-vue-next'
+import { HelpCircle } from 'lucide-vue-next'
 
 interface Props {
   href: string
@@ -18,64 +18,50 @@ const props = withDefaults(defineProps<Props>(), {
     :href="href"
     target="_blank"
     rel="noopener noreferrer"
-    class="manual-step-link"
+    class="manual-icon-link"
     :class="{ compact }"
-    :title="label || $t('common.manual_link', 'マニュアルを開く')"
+    :title="label ? `${label} - マニュアルを開く` : 'マニュアルを開く'"
+    @click.stop
   >
-    <BookOpen :size="compact ? 13 : 14" class="manual-icon" />
-    <span v-if="label" class="manual-label">{{ label }}</span>
-    <ExternalLink :size="compact ? 11 : 12" class="external-icon" />
+    <HelpCircle :size="compact ? 15 : 16" class="manual-icon" />
   </a>
 </template>
 
 <style scoped>
-.manual-step-link {
+.manual-icon-link {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--accent-light, #38bdf8);
-  background: var(--accent-glow, rgba(56, 189, 248, 0.1));
-  border: 1px solid var(--border-accent, rgba(56, 189, 248, 0.25));
-  border-radius: var(--radius-sm, 6px);
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
   text-decoration: none;
-  line-height: 1;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
+  transition: all var(--transition);
+  flex-shrink: 0;
 }
 
-.manual-step-link:hover {
-  background: var(--accent, #0284c7);
-  color: #ffffff;
-  border-color: var(--accent, #0284c7);
+.manual-icon-link:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
 }
 
-.manual-step-link.compact {
-  padding: 3px 6px;
-  font-size: 0.72rem;
-  gap: 4px;
+.manual-icon-link.compact {
+  width: 20px;
+  height: 20px;
 }
 
 .manual-icon {
   flex-shrink: 0;
-  opacity: 0.9;
+  transition: transform var(--transition);
 }
 
-.manual-label {
-  letter-spacing: 0.01em;
-}
-
-.external-icon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.manual-step-link:hover .external-icon,
-.manual-step-link:hover .manual-icon {
-  opacity: 1;
+.manual-icon-link:hover .manual-icon {
+  transform: scale(1.1);
 }
 </style>

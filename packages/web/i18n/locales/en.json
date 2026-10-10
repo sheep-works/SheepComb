@@ -3,7 +3,31 @@
     "save": "Save",
     "cancel": "Cancel",
     "reset_confirm": "Are you sure you want to reset all project data? This action cannot be undone.",
-    "reset_project": "Reset Project"
+    "reset_project": "Reset Project",
+    "reset_all_title": "Reset All Data",
+    "reset_all_confirm": "Are you sure you want to reset all data across SheepComb? This cannot be undone.",
+    "reset_all_success": "All data has been reset successfully.",
+    "clear_modal": {
+      "title": "Clear / Reset Data",
+      "subtitle": "Select the data category you want to delete and click Delete. This action cannot be undone.",
+      "toggle_unlock": "Unlock Delete",
+      "btn_delete": "Delete",
+      "all_title": "Clear All (Entire System)",
+      "all_desc": "Reset all working data and local cache across all tools stored in this browser",
+      "shuttle_title": "SheepShuttle Data",
+      "shuttle_desc": "Data from Parser, Analyzer, Manage, and API pipelines",
+      "groom_title": "SheepGroom Data",
+      "groom_desc": "Bilingual alignment project data",
+      "bell_title": "SheepBell Data",
+      "bell_desc": "LQA validation and rule verification data",
+      "others_title": "Other Tools Data",
+      "others_desc": "Diff comparison, Concordance, Match %, and chunking data",
+      "msg_all_cleared": "All system data has been cleared successfully",
+      "msg_shuttle_cleared": "SheepShuttle data has been cleared",
+      "msg_groom_cleared": "SheepGroom data has been cleared",
+      "msg_bell_cleared": "SheepBell data has been cleared",
+      "msg_others_cleared": "Other tools data has been cleared"
+    }
   },
   "header": {
     "nav": {

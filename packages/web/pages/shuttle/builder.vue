@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { FileIO } from '../../utils/fileIO'
 import JSZip from 'jszip'
+import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
 import type { ShWvData, ShWvFileInfo } from '@sheep-family/types'
 
 const store = useShuttleStore()
@@ -22,6 +23,11 @@ const { t } = useI18n()
 // Files state
 const xliffInput = ref<HTMLInputElement | null>(null)
 const jsonInput = ref<HTMLInputElement | null>(null)
+
+// Collapse state
+const isXliffOpen = ref(true)
+const isShwvOpen = ref(false)
+const isActionsOpen = ref(false)
 
 interface XliffFileState {
   name: string
@@ -59,6 +65,7 @@ watch(useActiveStoreData, (val) => {
   if (val) {
     shwvData.value = store.data
     shwvFileName.value = store.data ? `(Active Project Data: ${store.currentFileName || 'Unnamed'})` : ''
+    isActionsOpen.value = true
   } else {
     shwvData.value = null
     shwvFileName.value = ''
@@ -143,6 +150,10 @@ const addXliffFiles = async (files: File[]) => {
       console.error('Failed to read file:', file.name, err)
     }
   }
+
+  if (xliffFiles.value.length > 0) {
+    isShwvOpen.value = true
+  }
 }
 
 const handleJsonDrop = async (e: DragEvent) => {
@@ -174,6 +185,7 @@ const loadShwvJson = async (file: File) => {
 
     shwvData.value = data
     shwvFileName.value = file.name
+    isActionsOpen.value = true
 
     // Re-run matching for existing files
     for (const f of xliffFiles.value) {
@@ -196,6 +208,9 @@ const clearAll = () => {
   shwvData.value = null
   shwvFileName.value = ''
   useActiveStoreData.value = false
+  isXliffOpen.value = true
+  isShwvOpen.value = false
+  isActionsOpen.value = false
   store.setStatus('', 'info')
 }
 
@@ -309,10 +324,19 @@ const getUnitsCountString = (matchedIndex: number) => {
       <!-- Sidebar -->
       <aside class="sidebar">
         <!-- Bilingual Files Card -->
-        <div class="card upload-section">
-          <div class="card-header">
-            <h2>{{ $t('shuttle.builder.upload_xliff') }}</h2>
-          </div>
+        <AppCardCollapse v-model:open="isXliffOpen" :title="$t('shuttle.builder.upload_xliff')">
+          <template #header>
+            <div class="card-title-group">
+              <FileUp :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.builder.upload_xliff') }}</h2>
+            </div>
+          </template>
+          <template #actions>
+            <span v-if="xliffFiles.length > 0" class="badge-mini badge-pass">
+              {{ xliffFiles.length }}
+            </span>
+          </template>
+
           <div
             class="drop-zone"
             :class="{ active: isXliffDragOver }"
@@ -326,13 +350,21 @@ const getUnitsCountString = (matchedIndex: number) => {
             <p v-else class="file-count">{{ $t('shuttle.parser.files_selected', { count: xliffFiles.length }) }}</p>
             <input type="file" ref="xliffInput" hidden multiple accept=".xlf,.xliff,.mxliff,.mqxliff,.sdlxliff" @change="handleXliffSelect" />
           </div>
-        </div>
+        </AppCardCollapse>
 
         <!-- ShWvData Card -->
-        <div class="card upload-section">
-          <div class="card-header">
-            <h2>{{ $t('shuttle.builder.upload_shwv') }}</h2>
-          </div>
+        <AppCardCollapse v-model:open="isShwvOpen" :title="$t('shuttle.builder.upload_shwv')">
+          <template #header>
+            <div class="card-title-group">
+              <FileUp :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.builder.upload_shwv') }}</h2>
+            </div>
+          </template>
+          <template #actions>
+            <span v-if="shwvData" class="badge-mini badge-pass">
+              {{ $t('shuttle.builder.desc_units', { count: shwvData.body?.units?.length || 0 }) }}
+            </span>
+          </template>
 
           <div style="margin-bottom: 12px;" v-if="store.hasData">
             <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-secondary);">
@@ -359,27 +391,48 @@ const getUnitsCountString = (matchedIndex: number) => {
             <div style="font-weight: 600; color: var(--accent);">{{ shwvFileName }}</div>
             <div style="font-size: 0.72rem; color: var(--text-muted);">{{ $t('shuttle.builder.desc_units', { count: store.shwvUnitCount }) }}</div>
           </div>
-        </div>
+        </AppCardCollapse>
 
         <!-- Actions -->
-        <div class="card actions" :class="{ disabled: xliffFiles.length === 0 || !shwvData || isProcessing }">
-          <div class="card-header">
-            <h2>{{ $t('shuttle.parser.actions_title') }}</h2>
+        <AppCardCollapse v-model:open="isActionsOpen" :title="$t('shuttle.parser.actions_title')">
+          <template #header>
+            <div class="card-title-group">
+              <Hammer :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.parser.actions_title') }}</h2>
+            </div>
+          </template>
+
+          <div class="actions-body">
+            <!-- 1. メインビルドボタン (全幅) -->
+            <button class="btn-run-build" @click="doBuild" :disabled="xliffFiles.length === 0 || !shwvData || isProcessing">
+              <Loader2 v-if="isProcessing" class="spin" :size="16" />
+              <Hammer v-else :size="16" />
+              <span>{{ isProcessing ? 'ビルド実行中...' : $t('shuttle.builder.btn_build') }}</span>
+            </button>
+
+            <!-- 2. サブアクション (ZIP一括保存 & クリア) -->
+            <div class="sub-actions-row">
+              <button 
+                class="btn-sub-action" 
+                @click="downloadAllAsZip" 
+                :disabled="xliffFiles.length === 0 || !xliffFiles.some(f => f.status === 'success') || isProcessing"
+                :title="$t('shuttle.builder.btn_download_all')"
+              >
+                <Archive :size="14" />
+                <span>{{ $t('shuttle.builder.btn_download_all') }}</span>
+              </button>
+              <button 
+                class="btn-sub-action btn-sub-clear" 
+                @click="clearAll" 
+                :disabled="isProcessing"
+                title="選択ファイルとデータをクリア"
+              >
+                <Trash2 :size="14" />
+                <span>クリア</span>
+              </button>
+            </div>
           </div>
-          <button class="btn primary" @click="doBuild" :disabled="xliffFiles.length === 0 || !shwvData || isProcessing">
-            <Loader2 v-if="isProcessing" class="spin" :size="18" />
-            <Hammer v-else :size="18" />
-            <span>{{ $t('shuttle.builder.btn_build') }}</span>
-          </button>
-          <button class="btn-outline" @click="downloadAllAsZip" :disabled="xliffFiles.length === 0 || !xliffFiles.some(f => f.status === 'success') || isProcessing">
-            <Archive :size="16" />
-            <span>{{ $t('shuttle.builder.btn_download_all') }}</span>
-          </button>
-          <button class="btn-clear" @click="clearAll" :disabled="isProcessing">
-            <Trash2 :size="14" />
-            <span>{{ $t('shuttle.parser.btn_parse') ? 'クリア' : 'Clear' }}</span>
-          </button>
-        </div>
+        </AppCardCollapse>
 
         <!-- Status Message -->
         <div class="status-msg" v-if="store.statusMsg.text" :class="store.statusMsg.type">
@@ -473,19 +526,57 @@ const getUnitsCountString = (matchedIndex: number) => {
 }
 
 .builder-layout {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 24px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
 }
 
 @media (max-width: 900px) {
   .builder-layout {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 }
 
-.upload-section {
-  padding: 16px 20px;
+.sidebar {
+  width: 350px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  color: var(--accent);
+}
+
+.card-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.badge-mini {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.badge-mini.badge-pass {
+  background: var(--success);
+  color: white;
 }
 
 .file-count {
@@ -495,36 +586,129 @@ const getUnitsCountString = (matchedIndex: number) => {
   word-break: break-all;
 }
 
-.actions {
-  padding: 18px 20px;
+.results-area {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.card.full-height {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  min-height: calc(100vh - 120px);
+  width: 100%;
 }
 
-.actions.disabled {
-  opacity: 0.7;
+.card-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.btn-clear {
+.card-header.space-between {
+  justify-content: space-between;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.empty-icon {
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.actions-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-run-build {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  padding: 10px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-xs);
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
-  padding: 10px;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+  white-space: nowrap;
 }
 
-.btn-clear:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.1);
+.btn-run-build:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+
+.btn-run-build:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.sub-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-sub-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.btn-sub-action:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.btn-sub-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-sub-clear:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
   color: var(--error);
-  border-color: var(--error);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .file-table-container {

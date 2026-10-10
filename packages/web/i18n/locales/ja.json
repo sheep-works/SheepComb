@@ -3,11 +3,35 @@
     "save": "保存",
     "cancel": "キャンセル",
     "reset_confirm": "プロジェクトのすべてのデータをリセットしますか？この操作は取り消せません。",
-    "reset_project": "プロジェクトをリセット"
+    "reset_project": "プロジェクトをリセット",
+    "reset_all_title": "全データ初期化",
+    "reset_all_confirm": "SheepComb内のすべての作業データ（Shuttle/Diff等）を初期化しますか？この操作は取り消せません。",
+    "reset_all_success": "すべての作業データを初期化しました",
+    "clear_modal": {
+      "title": "データ消去・初期化",
+      "subtitle": "消したいデータを選択して削除をクリックしてください。この操作は取り消せません。",
+      "toggle_unlock": "削除ロック解除",
+      "btn_delete": "削除",
+      "all_title": "全消去 (すべてのデータ)",
+      "all_desc": "ブラウザ内に保存された全ツールの作業データとキャッシュを初期化します",
+      "shuttle_title": "SheepShuttle のデータ",
+      "shuttle_desc": "パース、解析、管理、APIパイプラインの保持データ",
+      "groom_title": "SheepGroom のデータ",
+      "groom_desc": "対訳整列（Alignment）プロジェクトデータ",
+      "bell_title": "SheepBell のデータ",
+      "bell_desc": "LQA検証・ルールチェックデータ",
+      "others_title": "その他のデータ",
+      "others_desc": "Diff差分検証、コンコーダンス、確率チェック等のデータ",
+      "msg_all_cleared": "すべての作業データを初期化しました",
+      "msg_shuttle_cleared": "SheepShuttleの作業データを初期化しました",
+      "msg_groom_cleared": "SheepGroomのデータを初期化しました",
+      "msg_bell_cleared": "SheepBellのデータを初期化しました",
+      "msg_others_cleared": "その他のツールデータを初期化しました"
+    }
   },
   "header": {
     "nav": {
-      "shuttle": "対訳ファイル処理",
+      "shuttle": "SheepShuttle",
       "tools": "ツール",
       "manual": "マニュアル",
       "parser": "パース",

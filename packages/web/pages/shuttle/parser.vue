@@ -16,8 +16,8 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { SheepShuttle } from '@sheep-family/core'
-import type { TranslationPair } from '@sheep-family/types'
 import { FileIO } from '../../utils/fileIO'
+import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
 
 
 // ストアおよびコンポーネントの状態管理
@@ -30,6 +30,11 @@ const statusMsg = computed(() => {
   }
   return store.statusMsg
 })
+
+// カード開閉状態（アップロードのみデフォルト開、下は初期折り畳みで全体を認知しやすく）
+const isUploadOpen = ref(true)
+const isActionsOpen = ref(false)
+const isFilterOpen = ref(false)
 
 // Counts
 const countUnit = ref<'CHARA' | 'WORD'>('CHARA')
@@ -104,6 +109,7 @@ const handleFileDrop = (e: DragEvent) => {
     const valid = filterValidFiles(Array.from(e.dataTransfer.files))
     if (valid.length > 0) {
       selectedFiles.value = [...selectedFiles.value, ...valid]
+      isActionsOpen.value = true
     }
   }
 }
@@ -117,6 +123,7 @@ const handleFileSelect = (e: Event) => {
     const valid = filterValidFiles(Array.from(target.files))
     if (valid.length > 0) {
       selectedFiles.value = [...selectedFiles.value, ...valid]
+      isActionsOpen.value = true
     }
     target.value = ''
   }
@@ -303,15 +310,16 @@ function applyDirectInput() {
     <div class="parser-layout">
       <!-- Sidebar -->
       <aside class="sidebar">
-        <div class="card upload-section">
-          <div class="card-header space-between" style="display: flex; justify-content: space-between; align-items: center;">
-            <h2>{{ $t('shuttle.parser.upload_title') }}</h2>
+        <!-- 1. アップロードセクション -->
+        <AppCardCollapse :title="$t('shuttle.parser.upload_title')" v-model:open="isUploadOpen" class="sidebar-card">
+          <template #actions>
             <ManualLink
               href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-1-%E3%83%86%E3%82%99%E3%83%BC%E3%82%BF%E3%81%AE%E6%8A%BD%E5%87%BA-%E6%8A%BD%E5%87%BA%E3%83%98%E3%82%9A%E3%83%BC%E3%82%B7%E3%82%99"
               :label="$t('manual.steps.parser')"
               compact
             />
-          </div>
+          </template>
+
           <div class="drop-zone" @drop="handleFileDrop" @dragover.prevent @click="fileInput?.click()">
             <FileUp :size="24" class="drop-icon" />
             <p v-if="selectedFiles.length === 0">{{ $t('shuttle.parser.drag_drop') }}</p>
@@ -340,12 +348,15 @@ function applyDirectInput() {
               <Trash2 :size="14" />
             </button>
           </div>
-        </div>
+        </AppCardCollapse>
 
-        <div class="card actions" :class="{ disabled: (selectedFiles.length === 0 && !store.hasUnits) || isProcessing }">
-          <div class="card-header">
-            <h2>{{ $t('shuttle.parser.actions_title') }}</h2>
-          </div>
+        <!-- 2. パース実行アクション -->
+        <AppCardCollapse 
+          :title="$t('shuttle.parser.actions_title')" 
+          v-model:open="isActionsOpen"
+          class="sidebar-card"
+          :class="{ disabled: (selectedFiles.length === 0 && !store.hasUnits) || isProcessing }"
+        >
           <p class="hint-text">{{ $t('shuttle.parser.actions_hint') }}</p>
 
           <label class="checkbox-label" style="margin-bottom: 8px;">
@@ -357,19 +368,24 @@ function applyDirectInput() {
             <Loader2 v-if="isProcessing" class="spin" :size="18" />
             <span v-else>{{ $t('shuttle.parser.btn_parse') }}</span>
           </button>
+        </AppCardCollapse>
 
-          <!-- フィルタ設定エリア -->
-          <div class="filter-settings" v-if="store.hasUnits">
-            <div class="filter-divider"></div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h3 class="filter-title" style="margin-bottom: 0;">{{ $t('shuttle.parser.filter_title') }}</h3>
-              <ManualLink
-                href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-2-%E3%83%86%E3%82%99%E3%83%BC%E3%82%BF%E3%81%AE%E9%99%A4%E5%A4%96%E3%83%BB%E7%B5%9E%E3%82%8A%E8%BE%BC%E3%81%BF-%E3%83%95%E3%82%A3%E3%83%AB%E3%82%BF%E3%83%BB%E3%82%B5%E3%83%B3%E3%83%95%E3%82%9A%E3%83%AA%E3%83%B3%E3%82%AF%E3%82%99"
-                :label="$t('manual.steps.filter')"
-                compact
-              />
-            </div>
+        <!-- 3. フィルタ & サンプリング（データがある時） -->
+        <AppCardCollapse 
+          v-if="store.hasUnits"
+          :title="$t('shuttle.parser.filter_title')" 
+          v-model:open="isFilterOpen"
+          class="sidebar-card"
+        >
+          <template #actions>
+            <ManualLink
+              href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-2-%E3%83%86%E3%82%99%E3%83%BC%E3%82%BF%E3%81%AE%E9%99%A4%E5%A4%96%E3%83%BB%E7%B5%9E%E3%82%8A%E8%BE%BC%E3%81%BF-%E3%83%95%E3%82%A3%E3%83%AB%E3%82%BF%E3%83%BB%E3%82%B5%E3%83%B3%E3%83%95%E3%82%9A%E3%83%AA%E3%83%B3%E3%82%AF%E3%82%99"
+              :label="$t('manual.steps.filter')"
+              compact
+            />
+          </template>
 
+          <div class="filter-settings">
             <label class="checkbox-label" style="display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" v-model="filterOptions.toFilterDuplicate" />
@@ -421,7 +437,7 @@ function applyDirectInput() {
               {{ $t('shuttle.parser.btn_apply_sampling') }}
             </button>
           </div>
-        </div>
+        </AppCardCollapse>
 
         <div class="status-msg" v-if="statusMsg.text" :class="statusMsg.type">
           {{ statusMsg.text }}
@@ -460,21 +476,21 @@ function applyDirectInput() {
           </div>
 
           <div class="table-container" v-if="store.hasUnits">
-            <table>
+            <table class="parser-table">
               <thead>
                 <tr>
-                  <th class="w-10">#</th>
-                  <th>Source</th>
-                  <th>Target</th>
-                  <th v-if="store.units.some((s: TranslationPair) => s.note)">Note</th>
+                  <th class="col-idx">#</th>
+                  <th class="col-src">Source</th>
+                  <th class="col-tgt">Target</th>
+                  <th class="col-note" v-if="store.units.some((s: TranslationPair) => s.note)">Note</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="seg in paginatedUnits" :key="seg.idx">
-                  <td class="idx">{{ seg.idx + 1 }}</td>
-                  <td class="text">{{ seg.src }}</td>
-                  <td class="text">{{ seg.tgt }}</td>
-                  <td class="note" v-if="store.units.some((s: TranslationPair) => s.note)">
+                  <td class="col-idx idx">{{ seg.idx + 1 }}</td>
+                  <td class="col-src text">{{ seg.src }}</td>
+                  <td class="col-tgt text">{{ seg.tgt }}</td>
+                  <td class="col-note note" v-if="store.units.some((s: TranslationPair) => s.note)">
                     {{ seg.note }}
                   </td>
                 </tr>
@@ -611,15 +627,34 @@ function applyDirectInput() {
 }
 
 .parser-layout {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 24px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
 }
 
 @media (max-width: 900px) {
   .parser-layout {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
+}
+
+.sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.results-area {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .upload-section {
@@ -725,15 +760,16 @@ function applyDirectInput() {
   overflow: auto;
 }
 
-table {
+table.parser-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
+  table-layout: fixed;
 }
 
 th,
 td {
-  padding: 12px 20px;
+  padding: 12px 16px;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
@@ -745,6 +781,32 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: rgba(255, 255, 255, 0.02);
+}
+
+th.col-idx, td.col-idx {
+  width: 5%;
+  text-align: center;
+  padding: 12px 6px;
+}
+
+th.col-src, td.col-src {
+  width: 35%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+th.col-tgt, td.col-tgt {
+  width: 35%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+th.col-note, td.col-note {
+  width: 25%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  color: var(--text-muted);
+  font-size: 0.78rem;
 }
 
 td.idx {
@@ -762,10 +824,6 @@ td.note {
   color: var(--text-secondary);
   font-size: 0.78rem;
   font-style: italic;
-}
-
-.w-10 {
-  width: 10%;
 }
 
 /* Filters UI */

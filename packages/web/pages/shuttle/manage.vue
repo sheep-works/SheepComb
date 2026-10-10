@@ -13,6 +13,8 @@ import { useShuttleStore } from '../../stores/shuttleStore'
 import { FileIO } from '../../utils/fileIO'
 import { restorePlaceholders } from '@sheep-family/core'
 import JsonViewer from '../../components/JsonViewer.vue'
+import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
+import ManualLink from '../../components/ManualLink.vue'
 import type { QaConfig, QaIssue, QaIssueType } from '@sheep-family/types'
 import { useI18n } from 'vue-i18n'
 
@@ -26,6 +28,11 @@ const splitLength = ref(2000)
 const chunkLength = ref(2000)
 
 const activeTab = ref<'viewer' | 'qa'>('viewer')
+
+// 折り畳み状態
+const isUploadOpen = ref(true)
+const isQaOpen = ref(false)
+const isOpsOpen = ref(false)
 
 // QA 状態
 const qaConfig = ref<QaConfig>({
@@ -65,9 +72,11 @@ async function loadFile(file: File) {
     const data = JSON.parse(text)
     await store.loadShwvData(data, file.name)
     store.setStatus(t('shuttle.manage.msg_read_complete', { count: store.shwvUnitCount }), 'success')
-    // 新しいデータを読み込んだら QA 結果をリセット
+    // 新しいデータを読み込んだら QA 結果をリセット & セクションを展開
     qaIssues.value = []
     hasRunQa.value = false
+    isQaOpen.value = true
+    isOpsOpen.value = true
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     store.setStatus(t('shuttle.manage.msg_error', { msg }), 'error')
@@ -218,6 +227,9 @@ function doClear() {
   store.clear()
   qaIssues.value = []
   hasRunQa.value = false
+  isUploadOpen.value = true
+  isQaOpen.value = false
+  isOpsOpen.value = false
   store.setStatus(t('shuttle.manage.msg_cleared'), 'info')
 }
 </script>
@@ -228,10 +240,19 @@ function doClear() {
       <!-- Sidebar: Actions -->
       <aside class="sidebar">
         <!-- Loader Card -->
-        <div class="card upload-section">
-          <div class="card-header">
-            <h2>{{ $t('shuttle.manage.title_load', 'ShWvData 読み込み') }}</h2>
-          </div>
+        <AppCardCollapse v-model:open="isUploadOpen" :title="$t('shuttle.manage.title_load', 'ShWvData 読み込み')">
+          <template #header>
+            <div class="card-title-group">
+              <FileUp :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.manage.title_load', 'ShWvData 読み込み') }}</h2>
+            </div>
+          </template>
+          <template #actions>
+            <span v-if="hasData" class="badge-mini badge-pass">
+              {{ store.shwvUnitCount }}
+            </span>
+          </template>
+
           <div v-if="!hasData" class="drop-zone" @drop="handleFileDrop" @dragover.prevent @click="fileInput?.click()">
             <FileUp :size="24" class="drop-icon" />
             <p>{{ $t('shuttle.manage.drop_json', 'ShWvData (.json) をドロップ') }}</p>
@@ -244,16 +265,22 @@ function doClear() {
               <Trash2 :size="14" /> {{ $t('shuttle.manage.btn_clear', 'クリア') }}
             </button>
           </div>
-        </div>
+        </AppCardCollapse>
 
         <!-- QA Card -->
-        <div class="card" :class="{ disabled: !hasData }">
-          <div class="card-header">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <ShieldCheck :size="18" style="color: var(--accent);" />
-              <h2>QA (品質チェック)</h2>
+        <AppCardCollapse v-model:open="isQaOpen" :title="'QA (品質チェック)'">
+          <template #header>
+            <div class="card-title-group">
+              <ShieldCheck :size="16" class="header-icon" style="color: var(--accent);" />
+              <h2 class="card-title">QA (品質チェック)</h2>
             </div>
-          </div>
+          </template>
+          <template #actions>
+            <span v-if="hasRunQa" class="badge-mini" :class="qaIssues.length > 0 ? 'badge-warn' : 'badge-pass'">
+              {{ qaIssues.length }}
+            </span>
+          </template>
+
           <div class="action-list">
             <div class="qa-toggles">
               <label class="checkbox-label">
@@ -286,21 +313,25 @@ function doClear() {
               <Download :size="14" /> QAレポート (JSON)
             </button>
           </div>
-        </div>
+        </AppCardCollapse>
 
         <!-- Action Card -->
-        <div class="card" :class="{ disabled: !hasData }">
-          <div class="card-header space-between" style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <Settings2 :size="18" />
-              <h2>{{ $t('shuttle.manage.title_operations', 'データ操作・変換') }}</h2>
+        <AppCardCollapse v-model:open="isOpsOpen" :title="$t('shuttle.manage.title_operations', 'データ操作・変換')">
+          <template #header>
+            <div class="card-title-group">
+              <Settings2 :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.manage.title_operations', 'データ操作・変換') }}</h2>
             </div>
+          </template>
+          <template #actions>
             <ManualLink
               href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-5-%E3%83%86%E3%82%99%E3%83%BC%E3%82%BF%E3%81%AE%E5%88%86%E5%89%B2%E3%81%A8%E7%AE%A1%E7%90%86-%E7%AE%A1%E7%90%86%E3%83%98%E3%82%9A%E3%83%BC%E3%82%B7%E3%82%99"
               :label="$t('manual.steps.manage', 'マニュアル')"
               compact
+              @click.stop
             />
-          </div>
+          </template>
+
           <div class="action-list">
             <div class="action-group">
               <h3 class="group-title">{{ $t('shuttle.manage.group_export') }}</h3>
@@ -359,7 +390,7 @@ function doClear() {
           <div class="status-msg" v-if="statusMsg.text" :class="statusMsg.type">
             {{ statusMsg.text }}
           </div>
-        </div>
+        </AppCardCollapse>
       </aside>
 
       <!-- Main content -->
@@ -478,21 +509,62 @@ function doClear() {
 }
 
 .shuttle-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
 }
 
 @media (max-width: 900px) {
   .shuttle-layout {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 }
 
 .sidebar {
+  width: 350px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  color: var(--accent);
+}
+
+.card-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.badge-mini {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.badge-mini.badge-warn {
+  background: var(--warning);
+  color: black;
+}
+
+.badge-mini.badge-pass {
+  background: var(--success);
+  color: white;
 }
 
 .card {
@@ -623,15 +695,16 @@ function doClear() {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: var(--accent-gradient);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
 }
 
 .btn-qa-run:hover:not(:disabled) {
@@ -669,14 +742,15 @@ function doClear() {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 10px;
+  padding: 6px 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   color: var(--text-primary);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
 }
 
 .action-btn:hover:not(:disabled) {
@@ -720,7 +794,9 @@ function doClear() {
 .status-msg.error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
 
 .viewer-area {
+  flex: 1;
   min-width: 0;
+  width: 100%;
 }
 
 .view-tabs {

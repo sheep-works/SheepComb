@@ -1,111 +1,15 @@
 <template>
   <div class="bell-page-root">
     
-    <!-- ツールバー -->
-    <header class="bell-toolbar">
-      <div class="toolbar-inner">
-        
-        <!-- 左側: タイトル & フォルダ情報 -->
-        <div class="toolbar-section">
-          <div class="brand-title">
-            <span class="brand-icon">🔔</span>
-            <span class="brand-text">SheepBell LQA</span>
-          </div>
-
-          <div v-if="folderName" class="folder-badge">
-            <span>📁</span>
-            <span>{{ folderName }}</span>
-          </div>
-
-          <div v-if="loadedFileName" class="file-badge">
-            {{ loadedFileName }}
-          </div>
-        </div>
-
-        <!-- 右側: アクションボタン群 -->
-        <div class="toolbar-section actions-right">
-          <!-- 最終保存時刻 -->
-          <span v-if="lastSavedTime" class="save-time-text">
-            最終保存: {{ lastSavedTime }}
-          </span>
-
-          <!-- 未保存変更バッジ -->
-          <span v-if="hasUnsavedChanges" class="unsaved-badge">
-            <span>⚠️</span>
-            <span>未保存の変更あり</span>
-          </span>
-
-          <!-- フォルダを開く -->
-          <button 
-            @click="handleOpenFolderClick" 
-            :disabled="isLoading"
-            class="btn-tool"
-          >
-            <span>📂</span>
-            <span>フォルダを開く</span>
-          </button>
-
-          <input 
-            ref="fallbackFolderInput" 
-            type="file" 
-            webkitdirectory 
-            directory 
-            class="hidden-file-input" 
-            @change="handleFallbackFolderSelect" 
-          />
-
-          <!-- 保存ボタン (Ctrl+S) -->
-          <button 
-            v-if="issues.length > 0"
-            @click="() => saveIssues({ reason: 'manual' })"
-            class="btn-save"
-          >
-            <span>💾</span>
-            <span>保存 <kbd>Ctrl+S</kbd></span>
-          </button>
-
-          <!-- エクスポートドロップダウン -->
-          <div v-if="issues.length > 0" class="export-dropdown-wrapper">
-            <button 
-              @click="showExportMenu = !showExportMenu"
-              class="btn-tool"
-            >
-              <span>📤</span>
-              <span>エクスポート ▾</span>
-            </button>
-            <div 
-              v-if="showExportMenu" 
-              class="dropdown-menu"
-            >
-              <button 
-                @click="exportCsv(); showExportMenu = false"
-                class="dropdown-item"
-              >
-                <span>📊</span>
-                <span>標準 CSV (Excel互換)</span>
-              </button>
-              <button 
-                @click="downloadJson(); showExportMenu = false"
-                class="dropdown-item"
-              >
-                <span>📋</span>
-                <span>標準 JSON</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 使い方 -->
-          <button 
-            @click="showManualModal = true"
-            class="btn-help"
-            title="使い方ガイド"
-          >
-            ❓
-          </button>
-        </div>
-
-      </div>
-    </header>
+    <!-- 隠しフォルダ入力 -->
+    <input 
+      ref="fallbackFolderInput" 
+      type="file" 
+      webkitdirectory 
+      directory 
+      class="hidden-file-input" 
+      @change="handleFallbackFolderSelect" 
+    />
 
     <!-- メインコンテンツ -->
     <main class="bell-main-container">
@@ -141,9 +45,92 @@
         <p class="loading-text">{{ loadingMessage }}</p>
       </div>
 
-      <!-- 読み込み後: 検索・フィルタバー & 一覧 -->
+      <!-- 読み込み後: 操作バー & 検索・フィルタバー & 一覧 -->
       <div v-else class="issues-view-wrapper">
         
+        <!-- 上部操作バー -->
+        <div class="issues-action-bar">
+          <div class="action-bar-left">
+            <div v-if="folderName" class="folder-badge">
+              <span>📁</span>
+              <span>{{ folderName }}</span>
+            </div>
+
+            <div v-if="loadedFileName" class="file-badge">
+              {{ loadedFileName }}
+            </div>
+
+            <span v-if="lastSavedTime" class="save-time-text">
+              最終保存: {{ lastSavedTime }}
+            </span>
+
+            <span v-if="hasUnsavedChanges" class="unsaved-badge">
+              <span>⚠️</span>
+              <span>未保存の変更あり</span>
+            </span>
+          </div>
+
+          <div class="action-bar-right">
+            <!-- フォルダを開く -->
+            <button 
+              @click="handleOpenFolderClick" 
+              :disabled="isLoading"
+              class="btn-tool"
+            >
+              <span>📂</span>
+              <span>フォルダを開く</span>
+            </button>
+
+            <!-- 保存ボタン (Ctrl+S) -->
+            <button 
+              @click="() => saveIssues({ reason: 'manual' })"
+              class="btn-save"
+            >
+              <span>💾</span>
+              <span>保存 <kbd>Ctrl+S</kbd></span>
+            </button>
+
+            <!-- エクスポートドロップダウン -->
+            <div class="export-dropdown-wrapper">
+              <button 
+                @click="showExportMenu = !showExportMenu"
+                class="btn-tool"
+              >
+                <span>📤</span>
+                <span>エクスポート ▾</span>
+              </button>
+              <div 
+                v-if="showExportMenu" 
+                class="dropdown-menu"
+              >
+                <button 
+                  @click="exportCsv(); showExportMenu = false"
+                  class="dropdown-item"
+                >
+                  <span>📊</span>
+                  <span>標準 CSV (Excel互換)</span>
+                </button>
+                <button 
+                  @click="downloadJson(); showExportMenu = false"
+                  class="dropdown-item"
+                >
+                  <span>📋</span>
+                  <span>標準 JSON</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 使い方 -->
+            <button 
+              @click="showManualModal = true"
+              class="btn-help"
+              title="使い方ガイド"
+            >
+              ❓
+            </button>
+          </div>
+        </div>
+
         <!-- 検索・フィルタツールバー -->
         <div class="filter-bar">
           <!-- 検索インプット -->
@@ -386,7 +373,7 @@ import MediaImage from '~/components/bell/MediaImage.vue';
 import MediaVideo from '~/components/bell/MediaVideo.vue';
 
 definePageMeta({
-  title: 'SheepBell LQA Viewer',
+  title: 'LQA支援',
 });
 
 const {
@@ -526,49 +513,31 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.bell-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: rgba(22, 24, 34, 0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
-  padding: 10px 16px;
-}
-
-.toolbar-inner {
-  max-width: 1240px;
-  margin: 0 auto;
+.issues-action-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  background: var(--bg-secondary);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
-.toolbar-section {
+.action-bar-left {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
-.brand-title {
+.action-bar-right {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.brand-icon {
-  font-size: 1.15rem;
-}
-
-.brand-text {
-  font-size: 0.95rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #10b981, #06b6d4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .folder-badge {
@@ -591,12 +560,6 @@ onUnmounted(() => {
   border-radius: 4px;
   background: var(--bg-hover);
   color: var(--text-muted);
-}
-
-.actions-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .save-time-text {

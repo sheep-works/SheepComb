@@ -1,23 +1,59 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2, ChevronDown, Database, Layers, Zap, Code2, Cloud, Split, Search, BookOpen, Hammer, Percent, Scissors, Gamepad2, Sparkles, Bell } from 'lucide-vue-next'
+import { 
+  Trash2, ChevronDown, Database, Zap, Code2, Cloud, 
+  Split, Search, BookOpen, Hammer, Percent, Scissors, 
+  Gamepad2, Sparkles, Bell as BellIcon 
+} from 'lucide-vue-next'
 import { useShuttleStore } from '../stores/shuttleStore'
-import { useI18n } from 'vue-i18n'
+import { useDiffStore } from '../stores/diffStore'
+import { useToast } from '~/composables/useToast'
+import AppDataClearModal from './common/AppDataClearModal.vue'
 
-const store = useShuttleStore()
+const shuttleStore = useShuttleStore()
+const diffStore = useDiffStore()
 const route = useRoute()
 const { t, locale, locales, setLocale } = useI18n()
+const toast = useToast()
+const config = useRuntimeConfig()
+const appVersion = computed(() => (config.public.appVersion as string) || '2.0.0')
 
 const isWasmReady = defineModel<boolean>('wasmReady', { default: false })
+const showClearModal = ref(false)
 
-const currentTitle = computed(() => {
-  return (route.meta.title as string) || 'SheepCombWeb'
+const currentSubtitle = computed(() => {
+  const path = route.path
+  const pageTitle = (route.meta.title as string) || ''
+
+  if (path === '/' || path === '') {
+    return 'Web Application Portal'
+  }
+  if (path.startsWith('/shuttle')) {
+    return pageTitle ? `SheepShuttle - ${pageTitle}` : 'SheepShuttle'
+  }
+  if (path.startsWith('/groom')) {
+    return pageTitle ? `SheepGroom - ${pageTitle}` : 'SheepGroom'
+  }
+  if (path.startsWith('/bell')) {
+    return pageTitle ? `SheepBell - ${pageTitle}` : 'SheepBell'
+  }
+  if (path.startsWith('/tools')) {
+    return pageTitle ? `Tools - ${pageTitle}` : 'Tools'
+  }
+  if (path.startsWith('/play')) {
+    return pageTitle ? `Playground - ${pageTitle}` : 'Playground'
+  }
+  if (path.startsWith('/manual')) {
+    return 'User Manual'
+  }
+  if (path.startsWith('/license')) {
+    return 'Open Source License'
+  }
+  return pageTitle || 'Web Application Portal'
 })
 
-const handleReset = () => {
-  if (confirm(t('common.reset_confirm'))) {
-    store.clear()
-  }
+const handleResetAll = () => {
+  showClearModal.value = true
 }
 
 const handleLocaleChange = (event: Event) => {
@@ -25,8 +61,7 @@ const handleLocaleChange = (event: Event) => {
   if (target) {
     if (target.value === 'ja' || target.value === 'en' || target.value === 'zh') {
       setLocale(target.value)
-    }
-    else {
+    } else {
       setLocale('ja')
     }
   }
@@ -41,139 +76,140 @@ const handleLocaleChange = (event: Event) => {
           <h1 class="logo-text">
             <span class="logo-icon">🐑</span>
             SheepComb
-            <span class="logo-version">Web</span>
+            <span class="logo-version">v{{ appVersion }}</span>
           </h1>
-          <p class="logo-subtitle">{{ currentTitle }}</p>
+          <p class="logo-subtitle">{{ currentSubtitle }}</p>
         </div>
       </NuxtLink>
     </div>
 
-    <nav class="header-nav">
+    <nav class="header-nav" aria-label="Global Navigation">
       <div class="nav-main-groups">
-        <!-- Shuttle Group -->
+        <!-- 1. Shuttle Group -->
         <div class="nav-item has-dropdown">
           <button class="nav-group-trigger" :class="{ active: route.path.startsWith('/shuttle') }">
             <Database :size="16" />
-            <span>{{ $t('header.nav.shuttle') }}</span>
+            <span>{{ $t('header.nav.shuttle', 'Shuttle') }}</span>
             <ChevronDown :size="14" class="chevron" />
           </button>
           <div class="dropdown-menu">
             <NuxtLink to="/shuttle/parser" class="dropdown-item" active-class="active">
               <Database :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.parser') }}</span>
-                <span class="desc">{{ $t('header.nav.parser_desc') }}</span>
+                <span class="label">{{ $t('header.nav.parser', 'Parser') }}</span>
+                <span class="desc">{{ $t('header.nav.parser_desc', 'ファイル構文解析・抽出') }}</span>
               </div>
             </NuxtLink>
             <NuxtLink to="/shuttle/analyzer" class="dropdown-item" active-class="active">
               <Zap :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.analyzer') }}</span>
-                <span class="desc">{{ $t('header.nav.analyzer_desc') }}</span>
+                <span class="label">{{ $t('header.nav.analyzer', 'Analyzer') }}</span>
+                <span class="desc">{{ $t('header.nav.analyzer_desc', 'TM/TB一致率・類似度解析') }}</span>
               </div>
             </NuxtLink>
             <NuxtLink to="/shuttle/manage" class="dropdown-item" active-class="active">
               <Code2 :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.manage') }}</span>
-                <span class="desc">{{ $t('header.nav.manage_desc') }}</span>
+                <span class="label">{{ $t('header.nav.manage', 'Manage') }}</span>
+                <span class="desc">{{ $t('header.nav.manage_desc', 'プロジェクトデータ確認・編集') }}</span>
               </div>
             </NuxtLink>
             <NuxtLink to="/shuttle/builder" class="dropdown-item" active-class="active">
               <Hammer :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.builder') }}</span>
-                <span class="desc">{{ $t('header.nav.builder_desc') }}</span>
+                <span class="label">{{ $t('header.nav.builder', 'Builder') }}</span>
+                <span class="desc">{{ $t('header.nav.builder_desc', 'バイリンガルファイル再構築') }}</span>
               </div>
             </NuxtLink>
             <div class="dropdown-divider"></div>
             <NuxtLink to="/shuttle/api" class="dropdown-item" active-class="active">
               <Cloud :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.api') }}</span>
-                <span class="desc">{{ $t('header.nav.api_desc') }}</span>
+                <span class="label">{{ $t('header.nav.api', 'API Pipeline') }}</span>
+                <span class="desc">{{ $t('header.nav.api_desc', 'AI/LLM自動翻訳パイプライン') }}</span>
               </div>
             </NuxtLink>
           </div>
         </div>
 
-        <!-- Tools Group -->
+        <!-- 2. Groom (Direct link) -->
+        <div class="nav-item">
+          <NuxtLink to="/groom" class="nav-group-trigger nav-link-btn" :class="{ active: route.path.startsWith('/groom') }">
+            <Scissors :size="16" />
+            <span>SheepGroom</span>
+          </NuxtLink>
+        </div>
+
+        <!-- 3. Bell (Direct link) -->
+        <div class="nav-item">
+          <NuxtLink to="/bell" class="nav-group-trigger nav-link-btn" :class="{ active: route.path.startsWith('/bell') }">
+            <BellIcon :size="16" />
+            <span>SheepBell</span>
+          </NuxtLink>
+        </div>
+
+        <!-- 4. Tools Group -->
         <div class="nav-item has-dropdown">
           <button class="nav-group-trigger" :class="{ active: route.path.startsWith('/tools') }">
             <Split :size="16" />
-            <span>{{ $t('header.nav.tools') }}</span>
+            <span>{{ $t('header.nav.tools', 'Tools') }}</span>
             <ChevronDown :size="14" class="chevron" />
           </button>
           <div class="dropdown-menu">
             <NuxtLink to="/tools/batch" class="dropdown-item" active-class="active">
               <Split :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.batch') }}</span>
-                <span class="desc">{{ $t('header.nav.batch_desc') }}</span>
+                <span class="label">{{ $t('header.nav.batch', 'Diff') }}</span>
+                <span class="desc">{{ $t('header.nav.batch_desc', 'テキスト・TM差分検証') }}</span>
               </div>
             </NuxtLink>
             <NuxtLink to="/tools/concordance" class="dropdown-item" active-class="active">
               <Search :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.concordance') }}</span>
-                <span class="desc">{{ $t('header.nav.concordance_desc') }}</span>
+                <span class="label">{{ $t('header.nav.concordance', 'Concordance') }}</span>
+                <span class="desc">{{ $t('header.nav.concordance_desc', '用例・文脈検索') }}</span>
               </div>
             </NuxtLink>
             <NuxtLink to="/tools/check-percentage" class="dropdown-item" active-class="active">
               <Percent :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.check_percentage') }}</span>
-                <span class="desc">{{ $t('header.nav.check_percentage_desc') }}</span>
+                <span class="label">{{ $t('header.nav.check_percentage', 'Match %') }}</span>
+                <span class="desc">{{ $t('header.nav.check_percentage_desc', '類似度・一致率計算') }}</span>
               </div>
             </NuxtLink>
             <NuxtLink to="/tools/chunk" class="dropdown-item" active-class="active">
               <Scissors :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.chunk', 'テキストチャンク') }}</span>
-                <span class="desc">{{ $t('header.nav.chunk_desc', 'テキストを指定サイズで分割') }}</span>
-              </div>
-            </NuxtLink>
-            <div class="dropdown-divider"></div>
-            <NuxtLink to="/groom" class="dropdown-item" active-class="active">
-              <Scissors :size="14" />
-              <div class="item-text">
-                <span class="label">SheepGroom</span>
-                <span class="desc">対訳作成・Officeアライメント</span>
-              </div>
-            </NuxtLink>
-            <NuxtLink to="/bell" class="dropdown-item" active-class="active">
-              <Bell :size="14" />
-              <div class="item-text">
-                <span class="label">SheepBell</span>
-                <span class="desc">LQA課題 & クリップビューアー</span>
+                <span class="label">{{ $t('header.nav.chunk', 'Chunk') }}</span>
+                <span class="desc">{{ $t('header.nav.chunk_desc', 'テキスト分割') }}</span>
               </div>
             </NuxtLink>
           </div>
         </div>
 
-        <!-- Play Group -->
+        <!-- 5. Play Group -->
         <div class="nav-item has-dropdown">
           <button class="nav-group-trigger" :class="{ active: route.path.startsWith('/play') }">
             <Gamepad2 :size="16" />
-            <span>{{ $t('header.nav.play') }}</span>
+            <span>{{ $t('header.nav.play', 'Play') }}</span>
             <ChevronDown :size="14" class="chevron" />
           </button>
           <div class="dropdown-menu">
             <NuxtLink to="/play/edit-distance" class="dropdown-item" active-class="active">
               <Sparkles :size="14" />
               <div class="item-text">
-                <span class="label">{{ $t('header.nav.edit_distance') }}</span>
-                <span class="desc">{{ $t('header.nav.edit_distance_desc') }}</span>
+                <span class="label">{{ $t('header.nav.edit_distance', 'Edit Distance') }}</span>
+                <span class="desc">{{ $t('header.nav.edit_distance_desc', 'レーベンシュタイン距離可視化') }}</span>
               </div>
             </NuxtLink>
           </div>
         </div>
 
-        <!-- Manual Link -->
+        <!-- 6. Manual Link -->
         <div class="nav-item">
-          <NuxtLink to="/manual" class="nav-link" active-class="active">
-            <BookOpen :size="16" class="nav-icon" />
-            <span>{{ $t('header.nav.manual') }}</span>
+          <NuxtLink to="/manual" class="nav-group-trigger nav-link-btn" :class="{ active: route.path.startsWith('/manual') }">
+            <BookOpen :size="16" />
+            <span>{{ $t('header.nav.manual', 'Manual') }}</span>
           </NuxtLink>
         </div>
       </div>
@@ -181,20 +217,25 @@ const handleLocaleChange = (event: Event) => {
 
     <div class="header-right">
       <div class="locale-switcher">
-        <select :value="locale" @change="handleLocaleChange" class="locale-select">
+        <select :value="locale" @change="handleLocaleChange" class="locale-select" aria-label="Select Language">
           <option v-for="loc in locales" :key="loc.code" :value="loc.code">
             {{ loc.name }}
           </option>
         </select>
       </div>
-      <button class="btn-reset" @click="handleReset" :title="$t('common.reset_project')">
+      
+      <button class="btn-reset-all" @click="handleResetAll" :title="$t('common.reset_all_title', '全データ初期化')">
         <Trash2 :size="16" />
       </button>
-      <div class="wasm-badge" :class="isWasmReady ? 'ready' : 'loading'">
+
+      <div class="wasm-badge" :class="isWasmReady ? 'ready' : 'loading'" :title="isWasmReady ? 'WASM Ready' : 'WASM Initializing'">
         <span class="wasm-dot"></span>
         {{ isWasmReady ? 'WASM' : 'LOADING' }}
       </div>
     </div>
+
+    <!-- Data Clear Modal -->
+    <AppDataClearModal v-model:open="showClearModal" />
   </header>
 </template>
 
@@ -270,12 +311,13 @@ const handleLocaleChange = (event: Event) => {
   align-items: center;
   justify-content: center;
   flex: 1;
-  padding: 0 40px;
+  padding: 0 20px;
 }
 
 .nav-main-groups {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 8px;
 }
 
 .nav-item {
@@ -286,7 +328,7 @@ const handleLocaleChange = (event: Event) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 14px;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
@@ -295,6 +337,7 @@ const handleLocaleChange = (event: Event) => {
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
+  text-decoration: none;
 }
 
 .nav-group-trigger:hover {
@@ -382,49 +425,7 @@ const handleLocaleChange = (event: Event) => {
   margin: 6px 4px;
 }
 
-.nav-group {
-  display: flex;
-  gap: 2px;
-  background: var(--bg-primary);
-  border-radius: var(--radius-sm);
-  padding: 3px;
-}
-
-.nav-spacer {
-  flex: 1;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border-radius: var(--radius-xs);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: var(--transition);
-  white-space: nowrap;
-}
-
-.nav-link:hover {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
-}
-
-.nav-link.active {
-  color: var(--accent);
-  background: var(--accent-glow);
-}
-
-.nav-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-/* WASM Badge */
+/* Header Right */
 .header-right {
   display: flex;
   align-items: center;
@@ -433,45 +434,42 @@ const handleLocaleChange = (event: Event) => {
   justify-content: flex-end;
 }
 
-.btn-reset {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.btn-reset:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--error);
-  border-color: var(--error);
-}
-
-.locale-switcher {
-  display: flex;
-  align-items: center;
-}
-
 .locale-select {
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 0.8rem;
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 8px;
   cursor: pointer;
   outline: none;
   transition: var(--transition);
 }
 
 .locale-select:hover {
-  border-color: var(--accent);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.btn-reset-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-reset-all:hover {
+  background: var(--error);
+  color: #fff;
+  border-color: var(--error);
 }
 
 .wasm-badge {
@@ -479,65 +477,34 @@ const handleLocaleChange = (event: Event) => {
   align-items: center;
   gap: 6px;
   font-size: 0.68rem;
+  font-family: 'Inter', monospace;
   font-weight: 700;
-  padding: 4px 12px;
+  padding: 4px 8px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
-  letter-spacing: 0.05em;
-  font-family: 'Inter', monospace;
+  background: var(--bg-card);
 }
 
 .wasm-badge.ready {
-  background: var(--accent-glow);
   color: var(--accent-light);
   border-color: var(--border-accent);
-}
-
-.wasm-badge.loading {
-  color: var(--text-muted);
-  animation: pulse 2s ease-in-out infinite;
 }
 
 .wasm-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--text-muted);
 }
 
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
+.wasm-badge.ready .wasm-dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
 }
 
-@media (max-width: 768px) {
-  .app-header {
-    height: auto;
-    flex-wrap: wrap;
-    padding: 12px 16px;
-    gap: 8px;
-  }
-
-  .header-left,
-  .header-right {
-    min-width: auto;
-  }
-
+@media (max-width: 1024px) {
   .header-nav {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .logo-subtitle {
-    display: none;
+    display: none; /* 小画面時はモバイルメニュー等 */
   }
 }
 </style>

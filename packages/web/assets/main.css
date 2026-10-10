@@ -223,6 +223,7 @@ body {
   cursor: pointer;
   transition: var(--transition);
   font-family: 'Inter', sans-serif;
+  white-space: nowrap;
 }
 
 .btn-outline:hover:not(:disabled) {

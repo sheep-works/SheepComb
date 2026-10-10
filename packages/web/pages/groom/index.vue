@@ -4,7 +4,10 @@
     <!-- 画面1: ファイルペアリング (初期画面) -->
     <PairingView 
       v-if="currentView === 'pairing'"
+      :has-active-session="sheets.length > 0"
+      :active-session-info="{ sheetsCount: sheets.length, blocksCount: currentBlocks.length }"
       @start-align="handleStartAlign"
+      @resume-align="currentView = 'editor'"
       @open-importer="showImporter = true"
       @show-toast="showToast"
     />
@@ -19,6 +22,9 @@
         :match-count="matchCount"
         :unmatch-count="unmatchCount"
         :filter-only-unmatch="filterOnlyUnmatch"
+        :search-query="searchQuery"
+        @update:search-query="searchQuery = $event"
+        @add-block="addNewBlock"
         @back-to-pairing="currentView = 'pairing'"
         @change-sheet="activeSheetIndex = $event"
         @toggle-filter-unmatch="filterOnlyUnmatch = !filterOnlyUnmatch"
@@ -31,29 +37,6 @@
 
       <!-- メインコンテンツ -->
       <main class="editor-main-container">
-        
-        <!-- 検索・クイック操作バー -->
-        <div class="search-action-bar">
-          <div class="search-input-box">
-            <span class="search-icon">🔍</span>
-            <input 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="テキストやセクション名を検索..." 
-              class="search-input"
-            />
-            <button v-if="searchQuery" @click="searchQuery = ''" class="btn-clear-search">✕</button>
-          </div>
-
-          <div class="action-buttons-group">
-            <button 
-              @click="addNewBlock"
-              class="btn-add-block"
-            >
-              ➕ ブロック追加
-            </button>
-          </div>
-        </div>
 
         <!-- ブロック一覧 -->
         <div v-if="filteredBlocks.length > 0" class="block-cards-list">
@@ -111,6 +94,8 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useGroomStore } from '~/stores/groomStore';
 import type { SheetData, AlignBlock } from '~/types/groom';
 import { parseXlsx, parseTsvOrText, exportToXlsx, exportAllSheetsToXlsx, exportToPaddedTsv } from '~/utils/groomParser';
 import { extractFromFile, pairExtractedItems } from '~/utils/officeExtractor';
@@ -120,15 +105,23 @@ import BlockCard from '~/components/groom/BlockCard.vue';
 import DropZone from '~/components/groom/DropZone.vue';
 
 definePageMeta({
-  title: 'SheepGroom Align',
+  title: '対訳作成支援',
 });
 
-const currentView = ref<'pairing' | 'editor'>('pairing');
+const groomStore = useGroomStore();
+const {
+  currentView,
+  sheets,
+  activeSheetIndex,
+  filterOnlyUnmatch,
+  searchQuery,
+  currentSheet,
+  currentBlocks,
+  matchCount,
+  unmatchCount,
+  filteredBlocks,
+} = storeToRefs(groomStore);
 
-const sheets = ref<SheetData[]>([]);
-const activeSheetIndex = ref(0);
-const filterOnlyUnmatch = ref(false);
-const searchQuery = ref('');
 const showImporter = ref(false);
 const toastMessage = ref('');
 
@@ -141,37 +134,6 @@ function setCardRef(el: any, index: number) {
     cardRefs.value.delete(index);
   }
 }
-
-const currentSheet = computed(() => sheets.value[activeSheetIndex.value] || { sheetName: '', blocks: [] });
-const currentBlocks = computed(() => currentSheet.value.blocks);
-
-const matchCount = computed(() => {
-  return currentBlocks.value.filter(b => {
-    const s = b.sourceText ? b.sourceText.split('\n').length : 0;
-    const t = b.targetText ? b.targetText.split('\n').length : 0;
-    return s === t;
-  }).length;
-});
-
-const unmatchCount = computed(() => currentBlocks.value.length - matchCount.value);
-
-const filteredBlocks = computed(() => {
-  return currentBlocks.value.filter(b => {
-    if (filterOnlyUnmatch.value) {
-      const s = b.sourceText ? b.sourceText.split('\n').length : 0;
-      const t = b.targetText ? b.targetText.split('\n').length : 0;
-      if (s === t) return false;
-    }
-    if (searchQuery.value.trim()) {
-      const q = searchQuery.value.toLowerCase();
-      const matched = b.sectionName.toLowerCase().includes(q) ||
-        b.sourceText.toLowerCase().includes(q) ||
-        b.targetText.toLowerCase().includes(q);
-      if (!matched) return false;
-    }
-    return true;
-  });
-});
 
 function getActualIndex(block: AlignBlock): number {
   return currentBlocks.value.findIndex(b => b.id === block.id);
@@ -393,84 +355,6 @@ async function handleExportXlsx() {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.search-action-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: var(--bg-secondary);
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-
-.search-input-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  max-width: 420px;
-  background: var(--bg-input);
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  transition: border-color var(--transition);
-}
-
-.search-input-box:focus-within {
-  border-color: var(--accent);
-}
-
-.search-icon {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.search-input {
-  background: transparent;
-  border: none;
-  font-size: 0.8rem;
-  color: var(--text-primary);
-  width: 100%;
-}
-
-.search-input:focus {
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.btn-clear-search {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-}
-
-.btn-add-block {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  border-radius: var(--radius-xs);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.btn-add-block:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-hover);
 }
 
 .block-cards-list {

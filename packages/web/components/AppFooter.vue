@@ -3,7 +3,7 @@ import { ExternalLink, ShieldCheck, Github, Globe } from 'lucide-vue-next'
 
 const config = useRuntimeConfig()
 const appVersion = computed(() => {
-  return config.public.appVersion || '1.0.0'
+  return config.public.appVersion || '2.0.0'
 })
 </script>
 

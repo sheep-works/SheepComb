@@ -4,16 +4,17 @@
  * 翻訳対象ファイルの構造化および TM/TB / 内部類似度の解析を一括実行する画面。
  */
 definePageMeta({
-  title: '解析・構造化',
+  title: 'Analyzer',
   icon: 'zap',
 })
 
 import { ref, computed } from 'vue'
-import { FileUp, Trash2, Play, CheckCircle, AlertCircle, Database, Book, Layers, Download, ArrowRight, Settings2 } from 'lucide-vue-next'
+import { FileUp, Trash2, Play, CheckCircle, AlertCircle, Database, Book, Layers, Download, ArrowRight, Settings2, BarChart2, Search } from 'lucide-vue-next'
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { initWasm, getWasm } from '~/utils/wasm'
 import { FileIO } from '../../utils/fileIO'
 import { useI18n } from 'vue-i18n'
+import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
 
 const store = useShuttleStore()
 const router = useRouter()
@@ -22,13 +23,17 @@ const { t } = useI18n()
 const isProcessing = ref(false)
 const statusMsg = ref({ text: '', type: 'info' as 'info' | 'success' | 'error' })
 
+// カード開閉状態
+const isTargetOpen = ref(true)
+const isTmTbOpen = ref(false)
+const isActionOpen = ref(true)
+
 // ファイル状態
 const targetFiles = ref<File[]>([])
 const tmFiles = ref<File[]>([])
 const tbFiles = ref<File[]>([])
 
 // ProjectInfo 設定 (任意)
-const showAdvancedSettings = ref(false)
 const projectName = ref('SheepWeaveProject')
 const sourceLang = ref('en-US')
 const targetLang = ref('ja-JP')
@@ -95,7 +100,10 @@ function filterValidFiles(files: File[], validExts: string[], typeName: string):
 // ファイル管理
 function addTargetFiles(files: File[]) {
   const filtered = filterValidFiles(files, validTargetExts, '翻訳対象')
-  if (filtered.length > 0) targetFiles.value = [...targetFiles.value, ...filtered]
+  if (filtered.length > 0) {
+    targetFiles.value = [...targetFiles.value, ...filtered]
+    isTmTbOpen.value = true // 対象が入ったらTM/TBセクションを開く
+  }
 }
 function addTmFiles(files: File[]) {
   const filtered = filterValidFiles(files, validTmExts, 'TM')
@@ -110,52 +118,41 @@ function removeTargetFile(index: number) { targetFiles.value.splice(index, 1) }
 function removeTm(index: number) { tmFiles.value.splice(index, 1) }
 function removeTb(index: number) { tbFiles.value.splice(index, 1) }
 
-function downloadShwv() {
-  if (!store.hasData || !store.data) return
-  FileIO.downloadJson(store.data, 'project.json')
-  statusMsg.value = { text: 'project.json (ShWvData) をダウンロードしました', type: 'success' }
-}
-
-/**
- * 解析＆構造化の一括実行
- */
+// 解析・構造化の実行
 async function doAnalyzeAndStructure() {
+  if (!canRun.value) return
+  isProcessing.value = true
+  statusMsg.value = { text: '解析および構造化を実行中...', type: 'info' }
+
   try {
-    isProcessing.value = true
-    statusMsg.value = { text: '初期化中...', type: 'info' }
+    const wasmReady = await initWasm()
+    if (!wasmReady) throw new Error('WASMの初期化に失敗しました')
+    const wasm = getWasm()
 
-    // 1. WASM の初期化
-    try {
-      await initWasm()
-    } catch (e) {
-      console.error('WASM Init:', e)
-      throw new Error(t('shuttle.analyzer.err_init_wasm', 'WASM エンジンの初期化に失敗しました。'))
-    }
-
-    // 2. 翻訳対象ファイルが指定されている場合はパース
-    if (targetFiles.value.length > 0) {
+    // 1. 翻訳対象の確定
+    if (hasTargetFiles.value) {
       statusMsg.value = { text: 'ファイルをパース中...', type: 'info' }
-      const filesWithContent = await Promise.all(targetFiles.value.map(async file => {
-        const ext = file.name.split('.').pop()?.toLowerCase() || ''
+      const filesPayload = await Promise.all(targetFiles.value.map(async f => {
+        const ext = f.name.split('.').pop()?.toLowerCase() || ''
         const isBinary = ['xlsx', 'docx'].includes(ext)
         const isText = ['xlf', 'xliff', 'mxliff', 'sdlxliff', 'mqxliff', 'tmx', 'tbx', 'csv', 'tsv', 'json', 'jsonl'].includes(ext)
-        const content = isText ? await file.text() : await file.arrayBuffer()
-        return { name: file.name, content: content as any }
+        const content = isText ? await f.text() : await f.arrayBuffer()
+        return { name: f.name, content: content as any }
       }))
-      await store.parseFiles(filesWithContent)
+      await store.parseFiles(filesPayload)
     }
 
     if (!store.hasUnits && !store.hasData) {
-      throw new Error('解析対象のセグメントまたはデータがありません。ファイルを読み込んでください。')
+      throw new Error('解析可能なセグメントデータがありません。ファイルを読み込んでください。')
     }
 
-    // 3. 構造化（タグ保護・骨格作成）
+    // 2. 構造化（タグ保護・骨格作成）
     statusMsg.value = { text: 'タグ保護と構造化を実行中...', type: 'info' }
-    const projectInfo = showAdvancedSettings.value ? {
+    const projectInfo = {
       version: 2,
-      projectName: projectName.value,
-      sourceLanguage: sourceLang.value,
-      targetLanguage: targetLang.value,
+      projectName: projectName.value || 'SheepWeaveProject',
+      sourceLanguage: sourceLang.value || 'en-US',
+      targetLanguage: targetLang.value || 'ja-JP',
       sourceFiles: targetFiles.value.length > 0 ? targetFiles.value.map(f => f.name) : store.fileList.map(f => f.name),
       okapi: [
         {
@@ -167,13 +164,12 @@ async function doAnalyzeAndStructure() {
           }))
         }
       ]
-    } : undefined
+    }
 
-    // 構造化を実行
     store.convert(projectInfo)
 
-    // 4. TM 読み込み
-    if (tmFiles.value.length > 0) {
+    // 3. TM 読み込み
+    if (hasTm.value) {
       statusMsg.value = { text: 'TM を読み込み中...', type: 'info' }
       const tms = await Promise.all(tmFiles.value.map(async f => {
         const ext = f.name.split('.').pop()?.toLowerCase()
@@ -184,8 +180,8 @@ async function doAnalyzeAndStructure() {
       await store.addTms(tms)
     }
 
-    // 5. TB 読み込み
-    if (tbFiles.value.length > 0) {
+    // 4. TB 読み込み
+    if (hasTb.value) {
       statusMsg.value = { text: 'TB を読み込み中...', type: 'info' }
       const tbs = await Promise.all(tbFiles.value.map(async f => {
         const ext = f.name.split('.').pop()?.toLowerCase()
@@ -196,360 +192,361 @@ async function doAnalyzeAndStructure() {
       await store.addTbs(tbs)
     }
 
-    // 6. WASM による類似度・整合性・用語解析（TM がない場合も内部類似 quoted100 等を計算）
-    statusMsg.value = { text: 'マッチング解析を実行中...', type: 'info' }
-    const { analyze_all } = getWasm()
-    await store.analyze(analyze_all)
+    // 5. 解析実行（WASM または JS フォールバック）
+    statusMsg.value = { text: 'TM/TB照合および内部類似度を解析中...', type: 'info' }
+    await store.analyze(wasm?.analyze_all)
 
-    // 7. 自動でウェイト集計
+    // 6. ウェイト集計
     doWeightedCount()
 
-    statusMsg.value = { text: '解析・構造化が完了しました！', type: 'success' }
-
-  } catch (e: any) {
-    console.error('Analyze error:', e)
-    statusMsg.value = { text: `エラー: ${e.message}`, type: 'error' }
+    statusMsg.value = { text: `解析と構造化が完了しました (${store.shwvUnitCount} セグメント)`, type: 'success' }
+  } catch (err: any) {
+    console.error(err)
+    statusMsg.value = { text: err.message || 'エラーが発生しました', type: 'error' }
   } finally {
     isProcessing.value = false
   }
 }
 
-// 初期化時にすでにデータがあればウェイト計算
-if (store.hasData) {
-  doWeightedCount()
+function downloadShwv() {
+  if (!store.hasData || !store.shuttle.data) return
+  FileIO.downloadJson(store.shuttle.data, `${projectName.value || 'Project'}.shwv.json`)
 }
 </script>
 
 <template>
-  <div class="analyze-view">
-    <div class="content-card">
-      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="header-main">
-          <Database :size="24" class="header-icon" />
-          <div class="header-text">
-            <h1>{{ $t('shuttle.analyzer.title', '解析・構造化') }}</h1>
-            <p>{{ $t('shuttle.analyzer.subtitle', '翻訳対象ファイルのタグ保護・構造化と、TM/TB・内部類似度の解析を一括実行します') }}</p>
+  <div class="analyzer-view">
+    <div class="analyzer-layout">
+      
+      <!-- Sidebar (340px Sticky) -->
+      <aside class="sidebar">
+        
+        <!-- 1. 翻訳対象ファイル -->
+        <AppCardCollapse title="1. 翻訳対象ファイル" v-model:open="isTargetOpen" class="sidebar-card">
+          <div v-if="hasUnitsInStore && !hasTargetFiles" class="store-notice">
+            <CheckCircle :size="14" class="notice-icon" />
+            <span>パース済みデータ ({{ store.unitCount }} 件) を利用中</span>
           </div>
-        </div>
-        <ManualLink
-          href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-4-%E7%BF%BB%E8%A8%B3%E3%83%A1%E3%83%A2%E3%83%AA%E3%81%A8%E7%94%A8%E8%AA%9E%E9%9B%86%E3%81%AE%E7%85%A7%E5%90%88-%E8%A7%A3%E6%9E%90%E3%83%98%E3%82%9A%E3%83%BC%E3%82%B7%E3%82%99"
-          :label="$t('manual.steps.analyzer', 'マニュアル')"
-        />
-      </div>
 
-      <!-- プロジェクト状態 -->
-      <div class="project-status" v-if="hasDataInStore">
-        <CheckCircle :size="16" class="status-icon" />
-        <span>{{ $t('shuttle.analyzer.status_data', { count: store.shwvUnitCount }) }} (ShWvData 構築済み)</span>
-      </div>
-      <div class="project-status" v-else-if="hasUnitsInStore">
-        <CheckCircle :size="16" class="status-icon" />
-        <span>パース済みセグメント: {{ store.unitCount }} 件 (解析実行で ShWvData へ構造化されます)</span>
-      </div>
-      <div class="project-status warning" v-else>
-        <AlertCircle :size="16" class="status-icon" />
-        <span>翻訳対象ファイルまたはパース済みデータが必要です</span>
-      </div>
-
-      <div class="analyze-grid">
-        <!-- 翻訳対象ファイル -->
-        <div class="drop-card" style="grid-column: span 2;">
-          <div class="drop-header">
-            <Layers :size="18" />
-            <h3>翻訳対象ファイル (XLIFF / XLSX / CSV / TMX / DOCX等)</h3>
-            <span v-if="hasUnitsInStore && !hasTargetFiles" class="badge-store">ストア内のパース済みデータ利用中</span>
-          </div>
           <div class="drop-area" @drop.prevent="(e) => addTargetFiles(Array.from(e.dataTransfer?.files || []))" @dragover.prevent>
             <input type="file" accept=".xlf,.xliff,.mxliff,.sdlxliff,.mqxliff,.tmx,.tbx,.xlsx,.csv,.tsv,.json,.jsonl,.docx" multiple hidden @change="(e) => addTargetFiles(Array.from((e.target as HTMLInputElement).files || []))" ref="targetInput" />
             <div class="drop-label" @click="($refs.targetInput as HTMLInputElement).click()">
-              <FileUp :size="32" />
-              <p>新規に対象ファイルをドロップ、またはクリックして選択</p>
-              <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">.xlf, .mxliff, .xlsx, .csv, .tmx, .json 等</span>
+              <FileUp :size="24" class="drop-icon" />
+              <p>対象ファイルをドロップ、または選択</p>
+              <span class="drop-ext-hint">.xlf, .mxliff, .xlsx, .csv, .tmx, .json 等</span>
             </div>
           </div>
+
           <div class="file-mini-list" v-if="hasTargetFiles">
             <div v-for="(f, i) in targetFiles" :key="i" class="mini-item">
-              <span>{{ f.name }}</span>
-              <button @click="removeTargetFile(i)"><Trash2 :size="12" /></button>
+              <span class="mini-name">{{ f.name }}</span>
+              <button @click="removeTargetFile(i)" class="btn-remove"><Trash2 :size="12" /></button>
             </div>
           </div>
-        </div>
+        </AppCardCollapse>
 
-        <!-- TM Section -->
-        <div class="drop-card">
-          <div class="drop-header">
-            <Database :size="18" />
-            <h3>{{ $t('shuttle.analyzer.tm_title', '翻訳メモリ (TM: 任意)') }}</h3>
-          </div>
-          <div class="drop-area" @drop.prevent="(e) => addTmFiles(Array.from(e.dataTransfer?.files || []))" @dragover.prevent>
-            <input type="file" accept=".tmx,.xlf,.xliff,.mxliff,.mqxliff,.sdlxliff,.csv,.tsv,.xlsx,.json,.jsonl" multiple hidden @change="(e) => addTmFiles(Array.from((e.target as HTMLInputElement).files || []))" ref="tmInput" />
-            <div class="drop-label" @click="($refs.tmInput as HTMLInputElement).click()">
-              <FileUp :size="32" />
-              <p>{{ $t('shuttle.analyzer.tm_drop', 'TMファイルをドロップ') }}</p>
-              <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">.tmx, .xlf, .xlsx, .csv, .json, .jsonl</span>
+        <!-- 2. 参照データ (TM / TB) -->
+        <AppCardCollapse title="2. 参照データ (TM / TB: 任意)" v-model:open="isTmTbOpen" class="sidebar-card">
+          <!-- TM -->
+          <div class="sub-drop-group">
+            <div class="sub-group-title">
+              <Database :size="14" />
+              <span>翻訳メモリ (TM)</span>
+            </div>
+            <div class="drop-area-sm" @drop.prevent="(e) => addTmFiles(Array.from(e.dataTransfer?.files || []))" @dragover.prevent>
+              <input type="file" accept=".tmx,.xlf,.xliff,.mxliff,.mqxliff,.sdlxliff,.csv,.tsv,.xlsx,.json,.jsonl" multiple hidden @change="(e) => addTmFiles(Array.from((e.target as HTMLInputElement).files || []))" ref="tmInput" />
+              <div class="drop-label" @click="($refs.tmInput as HTMLInputElement).click()">
+                <p>TMファイルをドロップまたは選択</p>
+              </div>
+            </div>
+            <div class="file-mini-list" v-if="hasTm">
+              <div v-for="(f, i) in tmFiles" :key="i" class="mini-item">
+                <span class="mini-name">{{ f.name }}</span>
+                <button @click="removeTm(i)" class="btn-remove"><Trash2 :size="12" /></button>
+              </div>
             </div>
           </div>
-          <div class="file-mini-list" v-if="hasTm">
-            <div v-for="(f, i) in tmFiles" :key="i" class="mini-item">
-              <span>{{ f.name }}</span>
-              <button @click="removeTm(i)"><Trash2 :size="12" /></button>
-            </div>
-          </div>
-        </div>
 
-        <!-- TB Section -->
-        <div class="drop-card">
-          <div class="drop-header">
-            <Book :size="18" />
-            <h3>{{ $t('shuttle.analyzer.tb_title', '用語集 (TB: 任意)') }}</h3>
-          </div>
-          <div class="drop-area" @drop.prevent="(e) => addTbFiles(Array.from(e.dataTransfer?.files || []))" @dragover.prevent>
-            <input type="file" accept=".tbx,.csv,.tsv,.xlsx,.json,.jsonl" multiple hidden @change="(e) => addTbFiles(Array.from((e.target as HTMLInputElement).files || []))" ref="tbInput" />
-            <div class="drop-label" @click="($refs.tbInput as HTMLInputElement).click()">
-              <FileUp :size="32" />
-              <p>{{ $t('shuttle.analyzer.tb_drop', 'TBファイルをドロップ') }}</p>
-              <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">.tbx, .xlsx, .csv, .json, .jsonl</span>
+          <!-- TB -->
+          <div class="sub-drop-group" style="margin-top: 12px;">
+            <div class="sub-group-title">
+              <Book :size="14" />
+              <span>用語集 (TB)</span>
+            </div>
+            <div class="drop-area-sm" @drop.prevent="(e) => addTbFiles(Array.from(e.dataTransfer?.files || []))" @dragover.prevent>
+              <input type="file" accept=".tbx,.csv,.tsv,.xlsx,.json,.jsonl" multiple hidden @change="(e) => addTbFiles(Array.from((e.target as HTMLInputElement).files || []))" ref="tbInput" />
+              <div class="drop-label" @click="($refs.tbInput as HTMLInputElement).click()">
+                <p>TBファイルをドロップまたは選択</p>
+              </div>
+            </div>
+            <div class="file-mini-list" v-if="hasTb">
+              <div v-for="(f, i) in tbFiles" :key="i" class="mini-item">
+                <span class="mini-name">{{ f.name }}</span>
+                <button @click="removeTb(i)" class="btn-remove"><Trash2 :size="12" /></button>
+              </div>
             </div>
           </div>
-          <div class="file-mini-list" v-if="hasTb">
-            <div v-for="(f, i) in tbFiles" :key="i" class="mini-item">
-              <span>{{ f.name }}</span>
-              <button @click="removeTb(i)"><Trash2 :size="12" /></button>
-            </div>
-          </div>
-        </div>
-      </div>
+        </AppCardCollapse>
 
-      <!-- 詳細設定トグル (ProjectInfo) -->
-      <div style="padding: 0 24px 16px;">
-        <button class="btn-text-toggle" @click="showAdvancedSettings = !showAdvancedSettings">
-          <Settings2 :size="14" />
-          <span>{{ showAdvancedSettings ? 'プロジェクト詳細設定を閉じる' : 'プロジェクト詳細設定 (言語・プロジェクト名など)' }}</span>
-        </button>
-        <div v-if="showAdvancedSettings" class="advanced-settings-box">
-          <div class="form-group">
-            <label>プロジェクト名:</label>
-            <input v-model="projectName" type="text" class="input-sm" />
-          </div>
-          <div class="form-row">
+        <!-- 3. プロジェクト設定 & 解析実行 -->
+        <AppCardCollapse title="3. プロジェクト設定 & 解析実行" v-model:open="isActionOpen" class="sidebar-card">
+          <div class="project-settings-box">
             <div class="form-group">
-              <label>ソース言語:</label>
-              <input v-model="sourceLang" type="text" class="input-sm" />
+              <label>プロジェクト名:</label>
+              <input v-model="projectName" type="text" class="input-sm" placeholder="SheepWeaveProject" />
             </div>
-            <div class="form-group">
-              <label>ターゲット言語:</label>
-              <input v-model="targetLang" type="text" class="input-sm" />
+            <div class="form-row">
+              <div class="form-group">
+                <label>原文言語:</label>
+                <input v-model="sourceLang" type="text" class="input-sm" placeholder="en-US" />
+              </div>
+              <div class="form-group">
+                <label>訳文言語:</label>
+                <input v-model="targetLang" type="text" class="input-sm" placeholder="ja-JP" />
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="action-footer">
+          <button class="btn-run" @click="doAnalyzeAndStructure" :disabled="isProcessing || !canRun">
+            <span v-if="isProcessing" class="loader"></span>
+            <Play v-else :size="16" />
+            <span>{{ isProcessing ? '解析中...' : '解析・構造化を実行' }}</span>
+          </button>
+        </AppCardCollapse>
+
         <div v-if="statusMsg.text" :class="['status-box', statusMsg.type]">
           <span>{{ statusMsg.text }}</span>
         </div>
-        <div style="display: flex; gap: 12px; align-items: center; margin-left: auto;">
-          <button class="btn-outline-action" v-if="hasDataInStore" @click="downloadShwv" style="font-size: 0.9rem; padding: 8px 16px;">
-            <Download :size="16" /> ShWvData (JSON)
-          </button>
-          <button class="btn-outline-action" v-if="hasDataInStore" @click="router.push('/shuttle/manage')" style="font-size: 0.9rem; padding: 8px 16px;">
-            管理・QAへ <ArrowRight :size="16" />
-          </button>
-          <button class="btn-run" @click="doAnalyzeAndStructure" :disabled="isProcessing || !canRun">
-            <Play v-if="!isProcessing" :size="18" />
-            <span v-else class="loader"></span>
-            {{ isProcessing ? '処理中...' : '解析・構造化を実行' }}
-          </button>
-        </div>
-      </div>
-    </div>
+      </aside>
 
-    <!-- ウェイト計算結果テーブル -->
-    <div class="content-card" style="margin-top: 24px;" v-if="tierCounts">
-      <div class="card-header space-between" style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="header-main">
-          <div class="header-text">
-            <h1 style="font-size: 1.1rem;">ウェイト計算結果 (統計サマリー)</h1>
+      <!-- Main Results Area -->
+      <section class="results-area">
+        <div class="card full-height">
+          
+          <div class="card-header space-between">
+            <div class="title-group">
+              <BarChart2 :size="20" class="header-icon" />
+              <h2>解析結果 & 統計サマリー</h2>
+              <span class="badge" v-if="store.hasData">
+                {{ store.shwvUnitCount }} セグメント
+              </span>
+            </div>
+
+            <div class="header-actions" v-if="hasDataInStore">
+              <div class="unit-toggle">
+                <select v-model="countUnit" @change="doWeightedCount" class="select-sm">
+                  <option value="CHARA">文字数 (Chara)</option>
+                  <option value="WORD">単語数 (Word)</option>
+                </select>
+              </div>
+              <button class="btn-outline" @click="downloadShwv">
+                <Download :size="14" /> ShWv (JSON)
+              </button>
+              <NuxtLink to="/shuttle/manage" class="btn-outline btn-primary-link">
+                <span>管理・QAへ</span>
+                <ArrowRight :size="14" />
+              </NuxtLink>
+            </div>
           </div>
+
+          <!-- 統計サマリーテーブル -->
+          <div class="table-container" v-if="tierCounts">
+            <table class="analyzer-table">
+              <thead>
+                <tr>
+                  <th style="width: 35%;">一致率区分</th>
+                  <th style="width: 25%;">文字数 / 単語数</th>
+                  <th style="width: 20%;">ウェイト係数</th>
+                  <th style="width: 20%;">換算小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="match-badge match-100">100% 一致 (内部/外部)</span></td>
+                  <td class="num">{{ tierCounts[0]?.toLocaleString() }}</td>
+                  <td><input type="number" step="0.1" min="0" max="1" v-model.number="weights[0]" class="input-weight" /></td>
+                  <td class="num bold">{{ Math.round(weightedSubtotals[0] || 0).toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td><span class="match-badge match-95">99% ～ 95%</span></td>
+                  <td class="num">{{ tierCounts[1]?.toLocaleString() }}</td>
+                  <td><input type="number" step="0.1" min="0" max="1" v-model.number="weights[1]" class="input-weight" /></td>
+                  <td class="num bold">{{ Math.round(weightedSubtotals[1] || 0).toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td><span class="match-badge match-85">94% ～ 85%</span></td>
+                  <td class="num">{{ tierCounts[2]?.toLocaleString() }}</td>
+                  <td><input type="number" step="0.1" min="0" max="1" v-model.number="weights[2]" class="input-weight" /></td>
+                  <td class="num bold">{{ Math.round(weightedSubtotals[2] || 0).toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td><span class="match-badge match-75">84% ～ 75%</span></td>
+                  <td class="num">{{ tierCounts[3]?.toLocaleString() }}</td>
+                  <td><input type="number" step="0.1" min="0" max="1" v-model.number="weights[3]" class="input-weight" /></td>
+                  <td class="num bold">{{ Math.round(weightedSubtotals[3] || 0).toLocaleString() }}</td>
+                </tr>
+                <tr class="row-new">
+                  <td><span class="match-badge match-new">74% 以下 (新規)</span></td>
+                  <td class="num">{{ tierCounts[4]?.toLocaleString() }}</td>
+                  <td><input type="number" step="0.1" min="0" max="1" v-model.number="weights[4]" class="input-weight" /></td>
+                  <td class="num bold">{{ Math.round(weightedSubtotals[4] || 0).toLocaleString() }}</td>
+                </tr>
+                <tr class="row-total">
+                  <td><strong>総合計</strong></td>
+                  <td class="num total-accent">{{ totalRawCount.toLocaleString() }}</td>
+                  <td></td>
+                  <td class="num total-accent">{{ Math.round(totalWeightedCount).toLocaleString() }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="empty-state" v-else>
+            <Search :size="48" class="empty-icon" />
+            <p>左パネルから翻訳対象ファイル・参照データを設定し、「解析・構造化を実行」してください。</p>
+          </div>
+
         </div>
-        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; background: var(--bg-secondary); padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border);">
-          <select v-model="countUnit" @change="doWeightedCount" class="select-sm" style="padding: 2px 4px; font-size: 0.8rem; border: none; background: transparent; cursor: pointer; color: var(--text);">
-            <option value="CHARA" style="background: var(--bg-secondary); color: var(--text);">文字数 (Chara)</option>
-            <option value="WORD" style="background: var(--bg-secondary); color: var(--text);">単語数 (Word)</option>
-          </select>
-        </div>
-      </div>
-      <div class="table-container" style="padding: 0 24px 24px;">
-        <table style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 16px;">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--border);">
-              <th style="padding: 12px 8px;">一致率区分</th>
-              <th style="padding: 12px 8px;">文字数 / 単語数</th>
-              <th style="padding: 12px 8px; width: 100px;">ウェイト</th>
-              <th style="padding: 12px 8px;">小計</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom: 1px solid var(--border);">
-              <td style="padding: 12px 8px;">100% 一致 (内部/外部)</td>
-              <td style="padding: 12px 8px; font-variant-numeric: tabular-nums;">{{ tierCounts[0]?.toLocaleString() }}</td>
-              <td style="padding: 12px 8px;"><input type="number" step="0.1" min="0" max="1" v-model.number="weights[0]" class="input-sm" style="width: 70px;" /></td>
-              <td style="padding: 12px 8px; font-weight: 600; font-variant-numeric: tabular-nums;">{{ Math.round(weightedSubtotals[0] || 0).toLocaleString() }}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--border);">
-              <td style="padding: 12px 8px;">99% ～ 95%</td>
-              <td style="padding: 12px 8px; font-variant-numeric: tabular-nums;">{{ tierCounts[1]?.toLocaleString() }}</td>
-              <td style="padding: 12px 8px;"><input type="number" step="0.1" min="0" max="1" v-model.number="weights[1]" class="input-sm" style="width: 70px;" /></td>
-              <td style="padding: 12px 8px; font-weight: 600; font-variant-numeric: tabular-nums;">{{ Math.round(weightedSubtotals[1] || 0).toLocaleString() }}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--border);">
-              <td style="padding: 12px 8px;">94% ～ 85%</td>
-              <td style="padding: 12px 8px; font-variant-numeric: tabular-nums;">{{ tierCounts[2]?.toLocaleString() }}</td>
-              <td style="padding: 12px 8px;"><input type="number" step="0.1" min="0" max="1" v-model.number="weights[2]" class="input-sm" style="width: 70px;" /></td>
-              <td style="padding: 12px 8px; font-weight: 600; font-variant-numeric: tabular-nums;">{{ Math.round(weightedSubtotals[2] || 0).toLocaleString() }}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--border);">
-              <td style="padding: 12px 8px;">84% ～ 75%</td>
-              <td style="padding: 12px 8px; font-variant-numeric: tabular-nums;">{{ tierCounts[3]?.toLocaleString() }}</td>
-              <td style="padding: 12px 8px;"><input type="number" step="0.1" min="0" max="1" v-model.number="weights[3]" class="input-sm" style="width: 70px;" /></td>
-              <td style="padding: 12px 8px; font-weight: 600; font-variant-numeric: tabular-nums;">{{ Math.round(weightedSubtotals[3] || 0).toLocaleString() }}</td>
-            </tr>
-            <tr style="border-bottom: 2px solid var(--border);">
-              <td style="padding: 12px 8px;">74% 以下 (新規)</td>
-              <td style="padding: 12px 8px; font-variant-numeric: tabular-nums;">{{ tierCounts[4]?.toLocaleString() }}</td>
-              <td style="padding: 12px 8px;"><input type="number" step="0.1" min="0" max="1" v-model.number="weights[4]" class="input-sm" style="width: 70px;" /></td>
-              <td style="padding: 12px 8px; font-weight: 600; font-variant-numeric: tabular-nums;">{{ Math.round(weightedSubtotals[4] || 0).toLocaleString() }}</td>
-            </tr>
-            <tr style="background: var(--bg-hover);">
-              <td style="padding: 12px 8px; font-weight: bold;">合計</td>
-              <td style="padding: 12px 8px; font-weight: bold; font-variant-numeric: tabular-nums; color: var(--accent);">{{ totalRawCount.toLocaleString() }}</td>
-              <td style="padding: 12px 8px;"></td>
-              <td style="padding: 12px 8px; font-weight: bold; font-variant-numeric: tabular-nums; color: var(--accent);">{{ Math.round(totalWeightedCount).toLocaleString() }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      </section>
+
     </div>
   </div>
 </template>
 
 <style scoped>
-.analyze-view {
-  padding: 32px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.content-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-}
-
-.card-header {
+.analyzer-view {
   padding: 24px;
-  border-bottom: 1px solid var(--border);
 }
 
-.header-main {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-icon { color: var(--accent); }
-.header-text h1 { font-size: 1.25rem; font-weight: 800; margin: 0; color: var(--text-primary); }
-.header-text p { font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 0; }
-
-.project-status {
-  margin: 20px 24px 0;
-  padding: 10px 16px;
-  background: var(--bg-hover);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.project-status.warning {
-  color: var(--warning);
-  background: rgba(245, 158, 11, 0.05);
-}
-
-.badge-store {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  background: var(--accent-glow);
-  color: var(--accent-light);
-  border-radius: 4px;
-  font-weight: 600;
-  margin-left: auto;
-}
-
-.analyze-grid {
+.analyzer-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 350px 1fr;
   gap: 24px;
-  padding: 24px;
+  align-items: start;
 }
 
-.drop-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 16px;
+@media (max-width: 900px) {
+  .analyzer-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
-.drop-header {
+.store-notice {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-secondary);
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--accent-glow);
+  color: var(--accent-light);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-xs);
+  font-size: 0.74rem;
+  font-weight: 600;
+  margin-bottom: 10px;
 }
-
-.drop-header h3 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 
 .drop-area {
   border: 2px dashed var(--border);
   border-radius: var(--radius-xs);
-  padding: 30px 20px;
+  padding: 20px 14px;
   text-align: center;
   transition: var(--transition);
+  cursor: pointer;
 }
 
-.drop-area:hover { border-color: var(--accent); background: var(--accent-glow); }
+.drop-area:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
 
-.drop-label { cursor: pointer; color: var(--text-muted); }
-.drop-label p { font-size: 0.75rem; margin-top: 8px; }
+.drop-area-sm {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xs);
+  padding: 12px 10px;
+  text-align: center;
+  transition: var(--transition);
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.drop-area-sm:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.drop-icon {
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.drop-label p {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.drop-ext-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
+}
+
+.sub-drop-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sub-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
 
 .file-mini-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 120px;
+  margin-top: 8px;
+  max-height: 100px;
   overflow-y: auto;
 }
 
 .mini-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 6px 10px;
-  background: var(--bg-secondary);
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+}
+
+.mini-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
   color: var(--text-secondary);
 }
 
-.mini-item button {
+.btn-remove {
   background: none;
   border: none;
   color: var(--error);
@@ -557,120 +554,271 @@ if (store.hasData) {
   opacity: 0.6;
 }
 
-.mini-item button:hover { opacity: 1; }
+.btn-remove:hover { opacity: 1; }
 
-.btn-text-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  cursor: pointer;
-  padding: 4px 0;
-}
-
-.btn-text-toggle:hover {
-  color: var(--accent);
-}
-
-.advanced-settings-box {
-  margin-top: 12px;
-  padding: 16px;
-  background: var(--bg-secondary);
+.project-settings-box {
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .form-group label {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
 }
 
 .input-sm {
-  padding: 6px 10px;
-  border-radius: var(--radius-xs);
+  padding: 4px 8px;
+  background: var(--bg-input);
   border: 1px solid var(--border);
-  background: var(--bg-card);
+  border-radius: 4px;
   color: var(--text-primary);
-  font-size: 0.85rem;
-}
-
-.action-footer {
-  padding: 24px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-
-.status-box {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  background: var(--bg-hover);
-}
-
-.status-box.success { color: var(--success); background: rgba(16, 185, 129, 0.1); }
-.status-box.error { color: var(--error); background: rgba(239, 68, 68, 0.1); }
-
-.btn-outline-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.btn-outline-action:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  font-size: 0.78rem;
 }
 
 .btn-run {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 32px;
-  background: var(--accent-gradient);
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, #059669, #10b981);
   color: white;
   border: none;
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 4px 12px var(--accent-glow);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  white-space: nowrap;
 }
 
-.btn-run:hover:not(:disabled) { transform: translateY(-2px); }
-.btn-run:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+.btn-run:hover:not(:disabled) {
+  background: linear-gradient(135deg, #047857, #059669);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-run:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-box {
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.status-box.success { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.status-box.error { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+.status-box.info { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+/* Results Area */
+.results-area {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.card.full-height {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 120px);
+  width: 100%;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-group h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.header-icon {
+  color: var(--accent);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-outline:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.btn-primary-link {
+  background: var(--accent-glow);
+  color: var(--accent-light);
+  border-color: var(--border-accent);
+}
+
+.btn-primary-link:hover {
+  background: var(--accent);
+  color: #042f20;
+}
+
+.unit-toggle .select-sm {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  padding: 5px 8px;
+}
+
+/* Table */
+.table-container {
+  padding: 16px 20px;
+}
+
+table.analyzer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+th, td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Inter', monospace;
+}
+
+td.num.bold {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.input-weight {
+  width: 60px;
+  padding: 3px 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.match-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.match-100 { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.match-95 { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+.match-85 { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+.match-75 { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.match-new { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+
+.row-total {
+  background: var(--bg-hover);
+}
+
+.total-accent {
+  font-weight: 800;
+  color: var(--accent) !important;
+  font-size: 0.95rem;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 12px;
+}
+
+.empty-icon {
+  opacity: 0.3;
+}
 
 .loader {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #fff;
   border-radius: 50%;

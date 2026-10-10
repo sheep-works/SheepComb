@@ -1,13 +1,27 @@
 <template>
   <div class="pairing-container">
     
+    <!-- 続きから再開バナー (編集中のセッションがある場合) -->
+    <div v-if="hasActiveSession" class="resume-session-banner card">
+      <div class="resume-info">
+        <span class="resume-icon">⚡</span>
+        <div>
+          <h3 class="resume-title">編集中のアラインセッションがあります</h3>
+          <p class="resume-desc">
+            {{ activeSessionInfo?.sheetsCount || 1 }} シート / 全 {{ activeSessionInfo?.blocksCount || 0 }} ブロックのデータが保持されています。
+          </p>
+        </div>
+      </div>
+      <button 
+        @click="$emit('resume-align')"
+        class="btn-resume-align"
+      >
+        <span>▶ アラインエディタに戻る</span>
+      </button>
+    </div>
+
     <!-- ヘッダー -->
     <div class="pairing-header">
-      <div class="badge-pill">
-        <span>🐑 SheepGroom</span>
-        <span class="pill-sep">|</span>
-        <span>対訳作成 & アライメント支援</span>
-      </div>
       <h1 class="header-title">
         ファイルペアリング & アライン
       </h1>
@@ -84,8 +98,10 @@
                 <div class="file-box-wrapper">
                   <div 
                     class="file-info-box box-src"
-                    @dragover.prevent
-                    @drop.prevent="(e) => onSingleFileDrop(e, idx, 'src')"
+                    :class="{ 'cell-dragover': dragOverCell?.index === idx && dragOverCell?.side === 'src' }"
+                    @dragover.prevent.stop="dragOverCell = { index: idx, side: 'src' }"
+                    @dragleave.prevent.stop="onCellDragLeave(idx, 'src')"
+                    @drop.prevent.stop="(e) => onSingleFileDrop(e, idx, 'src')"
                   >
                     <p class="file-name" :title="pair.srcPath">
                       {{ getFileName(pair.srcPath) || '（未選択 - クリックまたはドロップ）' }}
@@ -106,8 +122,10 @@
                 <div class="file-box-wrapper">
                   <div 
                     class="file-info-box box-tgt"
-                    @dragover.prevent
-                    @drop.prevent="(e) => onSingleFileDrop(e, idx, 'tgt')"
+                    :class="{ 'cell-dragover': dragOverCell?.index === idx && dragOverCell?.side === 'tgt' }"
+                    @dragover.prevent.stop="dragOverCell = { index: idx, side: 'tgt' }"
+                    @dragleave.prevent.stop="onCellDragLeave(idx, 'tgt')"
+                    @drop.prevent.stop="(e) => onSingleFileDrop(e, idx, 'tgt')"
                   >
                     <p class="file-name" :title="pair.tgtPath">
                       {{ getFileName(pair.tgtPath) || '（未選択 - クリックまたはドロップ）' }}
@@ -185,8 +203,14 @@ import type { SheetData, FilePair } from '~/types/groom';
 import { parseXlsx } from '~/utils/groomParser';
 import { extractFromFile, pairExtractedItems } from '~/utils/officeExtractor';
 
+defineProps<{
+  hasActiveSession?: boolean;
+  activeSessionInfo?: { sheetsCount: number; blocksCount: number };
+}>();
+
 const emit = defineEmits<{
   (e: 'start-align', sheets: SheetData[]): void;
+  (e: 'resume-align'): void;
   (e: 'open-importer'): void;
   (e: 'show-toast', message: string): void;
 }>();
@@ -197,6 +221,7 @@ const pairs = ref<FilePair[]>([
 
 const isLoading = ref(false);
 const isCardDragging = ref(false);
+const dragOverCell = ref<{ index: number; side: 'src' | 'tgt' } | null>(null);
 
 const validPairsCount = computed(() => {
   return pairs.value.filter(p => !!p.srcPath && !!p.tgtPath).length;
@@ -233,7 +258,16 @@ function onSingleFileSelect(e: Event, index: number, side: 'src' | 'tgt') {
   }
 }
 
+function onCellDragLeave(index: number, side: 'src' | 'tgt') {
+  if (dragOverCell.value?.index === index && dragOverCell.value?.side === side) {
+    dragOverCell.value = null;
+  }
+}
+
 function onSingleFileDrop(e: DragEvent, index: number, side: 'src' | 'tgt') {
+  e.stopPropagation();
+  dragOverCell.value = null;
+  isCardDragging.value = false;
   if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
   const file = e.dataTransfer.files[0];
   if (side === 'src') {
@@ -351,6 +385,61 @@ async function startAllAlign() {
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+.resume-session-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(20, 184, 166, 0.12);
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  border-radius: var(--radius);
+}
+
+.resume-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.resume-icon {
+  font-size: 1.5rem;
+}
+
+.resume-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2dd4bf;
+}
+
+.resume-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.btn-resume-align {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+  transition: all var(--transition);
+}
+
+.btn-resume-align:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
 }
 
 .pairing-header {
@@ -550,6 +639,13 @@ async function startAllAlign() {
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   min-height: 44px;
+  transition: all var(--transition);
+}
+
+.file-info-box.cell-dragover {
+  border-color: var(--accent) !important;
+  background-color: var(--accent-glow) !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
 }
 
 .file-name {

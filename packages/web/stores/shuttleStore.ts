@@ -349,8 +349,18 @@ export const useShuttleStore = defineStore('shuttle', () => {
     statusMsg.value = { text: '', type: 'info' }
   }
 
-  function setStatus(text: string, type: 'info' | 'success' | 'error' = 'info') {
+  let statusTimer: any = null
+
+  function setStatus(text: string, type: 'info' | 'success' | 'error' = 'info', durationMs: number = 4500) {
     statusMsg.value = { text, type }
+    if (statusTimer) clearTimeout(statusTimer)
+    if (text && durationMs > 0) {
+      statusTimer = setTimeout(() => {
+        if (statusMsg.value.text === text) {
+          statusMsg.value = { text: '', type: 'info' }
+        }
+      }, durationMs)
+    }
   }
 
   /**

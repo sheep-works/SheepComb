@@ -59,7 +59,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      appVersion: '1.0.0',
+      appVersion: '2.0.0',
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || '/api',
       apiPort: process.env.NUXT_PUBLIC_API_PORT || '',
       apiKey: process.env.NUXT_PUBLIC_API_KEY,  // 追加

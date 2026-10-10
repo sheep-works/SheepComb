@@ -31,7 +31,7 @@
           <input 
             ref="fileInput" 
             type="file" 
-            accept=".xlsx,.xls,.tsv,.csv,.txt,.docx,.pptx" 
+            accept=".xlsx,.xls,.tsv,.csv,.txt" 
             class="file-input-hidden" 
             @change="handleFileSelect" 
           />
@@ -40,7 +40,7 @@
           </div>
           <div class="drop-texts">
             <p class="drop-main-text">
-              Excelファイル（Files.xlsx など）や Word / PPTX をドラッグ＆ドロップ
+              Excelファイル（Files.xlsx など）や TSV / CSV をドラッグ＆ドロップ
             </p>
             <p class="drop-sub-text">またはクリックしてファイルを選択</p>
           </div>
@@ -56,7 +56,7 @@
         <div class="paste-area">
           <textarea 
             v-model="pastedText"
-            placeholder="ここにTSVデータやマーカー付きテキスト（# または _@§_）を直接貼り付け..."
+            placeholder="ここに TSV / CSV データを直接貼り付け..."
             class="paste-textarea"
           ></textarea>
         </div>

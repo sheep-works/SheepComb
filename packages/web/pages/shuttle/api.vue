@@ -9,16 +9,22 @@ definePageMeta({
 })
 
 import { ref, computed, watch, onMounted } from 'vue'
-import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check } from 'lucide-vue-next'
+import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check, Settings2 } from 'lucide-vue-next'
 // Note: Using relative paths instead of Nuxt aliases (~~, ~, @) to ensure stable resolution.
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { useI18n } from 'vue-i18n'
+import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
 import type { ChunkOptions } from '@sheep-family/types'
 import defaultCheckPromptText from '../../prompts/default.md?raw'
 import defaultTransPromptText from '../../prompts/default-translation.md?raw'
 
 const store = useShuttleStore()
 const { t } = useI18n()
+
+// Collapse state
+const isProviderOpen = ref(false)
+const isRequestOpen = ref(true)
+const isSummaryOpen = ref(true)
 
 onMounted(async () => {
   store.provider = 'honox-local'
@@ -71,6 +77,23 @@ const userPrompt = ref(defaultCheckPromptText)
 const sourceLang = ref('英語')
 const targetLang = ref('日本語')
 const chunkMaxLength = ref<number>(4000)
+
+function applyLanguagesFromData() {
+  if (store.data?.meta?.projectInfo) {
+    if (store.data.meta.projectInfo.sourceLanguage) {
+      sourceLang.value = store.data.meta.projectInfo.sourceLanguage
+    }
+    if (store.data.meta.projectInfo.targetLanguage) {
+      targetLang.value = store.data.meta.projectInfo.targetLanguage
+    }
+  }
+}
+
+watch(() => store.data, (newData) => {
+  if (newData?.meta?.projectInfo) {
+    applyLanguagesFromData()
+  }
+}, { immediate: true })
 
 const chunkOptions = ref<ChunkOptions>({
   src: true,
@@ -560,13 +583,19 @@ function getStatusColor(status: string) {
       <!-- Sidebar: Request Settings -->
       <aside class="sidebar">
         <!-- LLM Provider Settings -->
-        <div class="card">
-          <div class="card-header">
-            <h2>{{ $t('shuttle.api.title_provider_settings') }}</h2>
+        <AppCardCollapse v-model:open="isProviderOpen" :title="$t('shuttle.api.title_provider_settings')">
+          <template #header>
+            <div class="card-title-group">
+              <Cloud :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.api.title_provider_settings') }}</h2>
+            </div>
+          </template>
+          <template #actions>
             <span class="dev-badge" :style="{ background: store.isConnected ? 'rgba(0, 200, 100, 0.15)' : 'rgba(255, 100, 100, 0.15)', color: store.isConnected ? '#4ade80' : '#f87171', border: '1px solid ' + (store.isConnected ? 'rgba(74, 222, 128, 0.3)' : 'rgba(248, 113, 113, 0.3)') }">
               {{ store.isConnected ? 'Connected' : 'Not Connected' }}
             </span>
-          </div>
+          </template>
+
           <div class="config-section">
             <div class="config-group">
               <label class="config-label">{{ $t('shuttle.api.lbl_password') }}</label>
@@ -591,24 +620,28 @@ function getStatusColor(status: string) {
                   href="https://lambuage.com/sheep-bobbin"
                   :label="$t('shuttle.api.lnk_manual')"
                   compact
+                  @click.stop
                 />
               </div>
             </div>
           </div>
-        </div>
+        </AppCardCollapse>
 
-        <div class="card">
-          <div class="card-header space-between" style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <h2>{{ $t('shuttle.api.title_request') }}</h2>
-              <span class="dev-badge">SheepBobbin v2</span>
+        <AppCardCollapse v-model:open="isRequestOpen" :title="$t('shuttle.api.title_request')">
+          <template #header>
+            <div class="card-title-group">
+              <Settings2 :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.api.title_request') }}</h2>
             </div>
+          </template>
+          <template #actions>
             <ManualLink
               href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-6-ai-llm-%E3%81%B8%E3%81%AE%E4%BE%9D%E9%A0%BC-api-%E3%83%98%E3%82%9A%E3%83%BC%E3%82%B7%E3%82%99"
               :label="$t('manual.steps.api')"
               compact
+              @click.stop
             />
-          </div>
+          </template>
 
           <div class="config-section">
             <div class="config-group">
@@ -707,14 +740,21 @@ function getStatusColor(status: string) {
               </button>
             </div>
           </div>
-        </div>
+        </AppCardCollapse>
 
+        <AppCardCollapse v-if="store.hasChunks" v-model:open="isSummaryOpen" :title="$t('shuttle.api.title_summary')">
+          <template #header>
+            <div class="card-title-group">
+              <Send :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.api.title_summary') }}</h2>
+            </div>
+          </template>
+          <template #actions>
+            <span class="badge-mini badge-pass">
+              {{ store.chunks.filter(c => c.status === 'success').length }} / {{ store.chunks.length }}
+            </span>
+          </template>
 
-
-        <div class="card status-card" v-if="store.hasChunks">
-          <div class="card-header">
-            <h2>{{ $t('shuttle.api.title_summary') }}</h2>
-          </div>
           <div class="status-content">
             <div class="status-stat">
               <span class="label">Total Chunks</span>
@@ -725,7 +765,7 @@ function getStatusColor(status: string) {
               <span class="value success">{{store.chunks.filter(c => c.status === 'success').length}}</span>
             </div>
           </div>
-        </div>
+        </AppCardCollapse>
       </aside>
 
       <!-- Main: Chunk List View -->
@@ -825,71 +865,71 @@ function getStatusColor(status: string) {
 }
 
 .api-layout {
-  display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 24px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
 }
 
 @media (max-width: 1000px) {
   .api-layout {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 }
 
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+.sidebar {
+  width: 350px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  transition: var(--transition);
-  overflow: hidden;
+  gap: 12px;
+  padding-bottom: 20px;
 }
 
-.card:hover {
-  border-color: var(--border-hover);
-}
-
-.full-height {
-  min-height: calc(100vh - 140px);
-}
-
-.card-header {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
+.card-title-group {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  gap: 8px;
 }
 
-.card-header.space-between {
-  justify-content: space-between;
+.header-icon {
+  color: var(--accent);
 }
 
-.card-header h2 {
-  font-size: 0.78rem;
+.card-title {
+  font-size: 0.88rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  margin: 0;
 }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  position: sticky;
-  top: 84px;
-  align-self: start;
+.badge-mini {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.badge-mini.badge-pass {
+  background: var(--success);
+  color: white;
+}
+
+.response-area {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 /* Config */
 .config-section {
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .config-group {
@@ -917,14 +957,15 @@ function getStatusColor(status: string) {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 8px;
+  padding: 6px 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   cursor: pointer;
   transition: var(--transition);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .radio-item input {
@@ -954,7 +995,7 @@ function getStatusColor(status: string) {
 
 .source-tab {
   flex: 1;
-  padding: 6px;
+  padding: 5px 6px;
   background: none;
   border: none;
   border-radius: 4px;
@@ -963,6 +1004,8 @@ function getStatusColor(status: string) {
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
+  text-align: center;
 }
 
 .source-tab.active {
@@ -972,19 +1015,19 @@ function getStatusColor(status: string) {
 
 .prompt-textarea {
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   min-height: 80px;
   resize: vertical;
 }
 
 .button-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .btn-action {
@@ -992,13 +1035,14 @@ function getStatusColor(status: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: var(--radius-sm);
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
 }
 
 .btn-action.primary {
