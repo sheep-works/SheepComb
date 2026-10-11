@@ -17,7 +17,8 @@ import type {
   ProjectInfo,
   ChunkOptions,
   QaConfig,
-  QaIssue
+  QaIssue,
+  ApplyTermsOptions
 } from '@sheep-family/types'
 import { type ChunkInfo } from '@sheep-family/core'
 
@@ -387,6 +388,16 @@ export const useShuttleStore = defineStore('shuttle', () => {
     syncState()
   }
 
+  /**
+   * TB用語を一括反映・置換する
+   */
+  function applyTerms(options?: ApplyTermsOptions): number {
+    if (!data.value) return 0
+    const count = shuttle.manager.applyTerms(data.value, options)
+    syncState()
+    return count
+  }
+
   // --- Rehydration (永続化データからの復元) ---
   // localStorage からデータが復元された直後に、内部の shuttle インスタンスにも同期させる
   const rehydrate = () => {
@@ -489,6 +500,7 @@ export const useShuttleStore = defineStore('shuttle', () => {
     exportSearchData,
     importSearchData,
     updateTargets,
+    applyTerms,
     // インスタンスへの直接アクセスが必要な場合用
     shuttle
   }

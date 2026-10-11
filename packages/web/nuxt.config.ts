@@ -1,3 +1,5 @@
+import pkg from '../../package.json'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   ssr: false,
@@ -7,6 +9,7 @@ export default defineNuxtConfig({
   app: {
     baseURL: '/app/',
     head: {
+      title: 'SheepComb - 翻訳支援Webポータル',
       link: [
         { rel: 'canonical', href: 'https://lambuage.com/app' }
       ],
@@ -59,7 +62,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      appVersion: '2.0.0',
+      appVersion: pkg.version || '2.0.1',
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || '/api',
       apiPort: process.env.NUXT_PUBLIC_API_PORT || '',
       apiKey: process.env.NUXT_PUBLIC_API_KEY,  // 追加

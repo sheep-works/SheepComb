@@ -4,11 +4,11 @@
  * 解析済みデータ（ShWvData）の管理・QAチェック・分割・エクスポートを行う画面。
  */
 definePageMeta({
-  title: '管理・QA',
+  title: 'Manage & QA (データ管理・検証)',
   icon: 'settings',
 })
 import { ref, computed } from 'vue'
-import { FileUp, Download, Scissors, Merge, FileText, FileJson, Trash2, Settings2, ShieldCheck, AlertTriangle, CheckCircle2, Filter } from 'lucide-vue-next'
+import { FileUp, Download, Scissors, Merge, FileText, FileJson, Trash2, Settings2, ShieldCheck, AlertTriangle, CheckCircle2, Filter, Sparkles } from 'lucide-vue-next'
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { FileIO } from '../../utils/fileIO'
 import { restorePlaceholders } from '@sheep-family/core'
@@ -223,6 +223,23 @@ async function doUpdateFromJsonl(e: Event) {
   }
 }
 
+// --- 用語 (TB) 一括置換処理 ---
+const termMatchWholeWord = ref(true)
+
+function doApplyTerms() {
+  if (!store.hasData || !store.data) return
+  const count = store.applyTerms({
+    targetField: 'tgt',
+    fallbackToSrc: true,
+    matchWholeWord: termMatchWholeWord.value
+  })
+  if (count > 0) {
+    store.setStatus(`${count} 件のセグメントにTB用語を反映しました`, 'success')
+  } else {
+    store.setStatus('適用可能なTB用語が見つからないか、置換対象セグメントがありませんでした', 'info')
+  }
+}
+
 function doClear() {
   store.clear()
   qaIssues.value = []
@@ -384,6 +401,22 @@ function doClear() {
                   <FileUp :size="16" /> {{ $t('shuttle.manage.btn_update_jsonl') }}
                 </button>
               </div>
+            </div>
+
+            <div class="action-group">
+              <h3 class="group-title">用語 (TB) 一括反映</h3>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4;">
+                漢字衝突を防ぐ2段階マーカー置換でTB用語を一括反映します（tgt → pre → src の順でテキストを取得し、tgt に格納）。
+              </div>
+              <div style="margin-bottom: 10px;">
+                <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.78rem; color: var(--text-secondary);">
+                  <input type="checkbox" v-model="termMatchWholeWord" style="accent-color: var(--accent);" />
+                  <span>単語境界を考慮 (英単語の部分一致防止)</span>
+                </label>
+              </div>
+              <button class="action-btn" @click="doApplyTerms" :disabled="!hasData" style="width: 100%; justify-content: center; background: rgba(59, 130, 246, 0.12); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">
+                <Sparkles :size="16" /> TB用語を一括反映
+              </button>
             </div>
           </div>
 

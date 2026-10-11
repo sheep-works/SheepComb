@@ -5,7 +5,7 @@
  * SheepShuttle コンポーネントを直接使用して解析を行います。
  */
 definePageMeta({
-  title: 'Parser',
+  title: 'Parser (構文解析)',
   icon: 'database',
 })
 

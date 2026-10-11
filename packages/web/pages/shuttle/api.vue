@@ -4,12 +4,12 @@
  * API Client tool.
  */
 definePageMeta({
-  title: 'API Client',
+  title: 'API Client (LLM連携)',
   icon: 'cloud',
 })
 
 import { ref, computed, watch, onMounted } from 'vue'
-import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check, Settings2 } from 'lucide-vue-next'
+import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check, Settings2, Copy } from 'lucide-vue-next'
 // Note: Using relative paths instead of Nuxt aliases (~~, ~, @) to ensure stable resolution.
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { useI18n } from 'vue-i18n'
@@ -95,12 +95,21 @@ watch(() => store.data, (newData) => {
   }
 }, { immediate: true })
 
+const useToon = ref(false)
+
 const chunkOptions = ref<ChunkOptions>({
   src: true,
   tgt: true,
   note: true,
   history: false,
-  terms: false
+  terms: false,
+  useToon: false,
+  format: 'jsonl'
+})
+
+watch(useToon, (val) => {
+  chunkOptions.value.useToon = val
+  chunkOptions.value.format = val ? 'toon' : 'jsonl'
 })
 
 const apiTarget = computed(() => {
@@ -156,11 +165,11 @@ watch(requestTarget, (newTarget, oldTarget) => {
 
   // Update default chunk options for non-custom targets
   if (newTarget === 'CHECK' || newTarget === 'DIFF') {
-    chunkOptions.value = { src: true, tgt: true, note: true, history: false, terms: false }
+    chunkOptions.value = { src: true, tgt: true, note: true, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
   } else if (newTarget === 'TRANSLATE') {
-    chunkOptions.value = { src: true, tgt: false, note: true, history: false, terms: false }
+    chunkOptions.value = { src: true, tgt: false, note: true, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
   } else if (newTarget === 'PROOF') {
-    chunkOptions.value = { src: false, tgt: true, note: false, history: false, terms: false }
+    chunkOptions.value = { src: false, tgt: true, note: false, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
   }
 })
 
@@ -305,6 +314,22 @@ async function processAll() {
 function clearResults() {
   errorMsg.value = ''
   store.clearChunks()
+}
+
+const copiedChunkIdx = ref<number | null>(null)
+let copyTimer: any = null
+
+async function copyChunkData(data: string, idx: number) {
+  try {
+    await navigator.clipboard.writeText(data)
+    copiedChunkIdx.value = idx
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
+      copiedChunkIdx.value = null
+    }, 2000)
+  } catch (e) {
+    console.error('Failed to copy chunk data:', e)
+  }
 }
 
 function exportCSV() {
@@ -726,9 +751,14 @@ function getStatusColor(status: string) {
               <textarea v-model="userPrompt" class="prompt-textarea"></textarea>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; margin-top: 12px;">
-              <label class="config-label" style="margin-bottom: 0;">チャンクサイズ上限 (文字数):</label>
-              <input type="number" v-model="chunkMaxLength" class="input-field" style="width: 100px; padding: 4px;" />
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; margin-top: 12px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="config-label" style="margin-bottom: 0;">チャンクサイズ上限 (文字数):</label>
+                <input type="number" v-model="chunkMaxLength" class="input-field" style="width: 100px; padding: 4px;" />
+              </div>
+              <label class="checkbox-label" title="TOON形式（Token-Oriented Object Notation）でチャンクを作成します。historyやtermの使用は非推奨です" style="font-size: 0.85rem; cursor: pointer; user-select: none;">
+                <input type="checkbox" v-model="useToon" /> TOONを使用（実験的）
+              </label>
             </div>
 
             <div class="button-row">
@@ -813,7 +843,13 @@ function getStatusColor(status: string) {
               <div class="chunk-body">
                 <div class="data-preview">
                   <label>Data:</label>
-                  <pre>{{ chunk.data.substring(0, 150) }}...</pre>
+                  <div class="pre-container">
+                    <pre>{{ chunk.data.substring(0, 150) }}...</pre>
+                    <button class="btn-copy-chunk" @click="copyChunkData(chunk.data, idx)" title="チャンク全体をコピー">
+                      <Check v-if="copiedChunkIdx === idx" :size="13" class="copy-success" />
+                      <Copy v-else :size="13" />
+                    </button>
+                  </div>
                 </div>
                 <div class="response-preview" v-if="chunk.response">
                   <label>Response:</label>
@@ -1265,6 +1301,40 @@ pre {
   font-family: 'Inter', monospace;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.pre-container {
+  position: relative;
+}
+
+.pre-container pre {
+  padding-right: 36px;
+}
+
+.btn-copy-chunk {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-copy-chunk:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-copy-chunk .copy-success {
+  color: var(--success);
 }
 
 .response-preview pre {

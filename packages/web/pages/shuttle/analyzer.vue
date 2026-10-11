@@ -4,7 +4,7 @@
  * 翻訳対象ファイルの構造化および TM/TB / 内部類似度の解析を一括実行する画面。
  */
 definePageMeta({
-  title: 'Analyzer',
+  title: 'Analyzer (TM/TB解析)',
   icon: 'zap',
 })
 

@@ -4,7 +4,7 @@
  * Bilingual files (XLIFF, MXLIFF, etc.) targets update using ShWvData.
  */
 definePageMeta({
-  title: 'ビルド',
+  title: 'Builder (ファイル再構築)',
   icon: 'hammer',
 })
 
@@ -43,6 +43,9 @@ const xliffFiles = ref<XliffFileState[]>([])
 const shwvData = ref<ShWvData | null>(null)
 const shwvFileName = ref('')
 const isProcessing = ref(false)
+
+const lockDuplicates = ref(false)
+const lockThreshold = ref(100)
 
 const useActiveStoreData = ref(false)
 
@@ -249,7 +252,10 @@ const doBuild = async () => {
       }
 
       // Run core builder
-      const rebuiltXml = await store.shuttle.builder.build(file.content, fileShwvData)
+      const rebuiltXml = await store.shuttle.builder.build(file.content, fileShwvData, {
+        lockDuplicates: lockDuplicates.value,
+        lockThreshold: lockThreshold.value
+      })
       file.rebuiltContent = rebuiltXml
       file.status = 'success'
       file.errorMsg = undefined
@@ -403,6 +409,24 @@ const getUnitsCountString = (matchedIndex: number) => {
           </template>
 
           <div class="actions-body">
+            <!-- ビルドオプション -->
+            <div class="build-options-box" style="margin-bottom: 12px; padding: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 8px;">
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.82rem; color: var(--text-main);">
+                <input type="checkbox" v-model="lockDuplicates" style="accent-color: var(--accent);" />
+                <span style="font-weight: 500;">重複・類似セグメントを一括ロック</span>
+              </label>
+              <div v-if="lockDuplicates" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.78rem; color: var(--text-secondary); padding-left: 20px;">
+                <span>適用閾値 (TMマッチ率):</span>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <input type="number" v-model.number="lockThreshold" min="50" max="100" step="1" class="input-sm" style="width: 58px; text-align: right; padding: 2px 6px;" />
+                  <span>% 以上</span>
+                </div>
+              </div>
+              <div v-if="lockDuplicates" style="font-size: 0.72rem; color: var(--text-muted); padding-left: 20px; line-height: 1.3;">
+                ※ 先行セグメントはロックされず、後続の同一・類似セグメント（MQXLIFF/MXLIFF/XLIFF）にロック属性（translate="no" 等）を付与します。
+              </div>
+            </div>
+
             <!-- 1. メインビルドボタン (全幅) -->
             <button class="btn-run-build" @click="doBuild" :disabled="xliffFiles.length === 0 || !shwvData || isProcessing">
               <Loader2 v-if="isProcessing" class="spin" :size="16" />

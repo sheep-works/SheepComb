@@ -3,9 +3,8 @@ import { ref } from 'vue'
 import { ShieldCheck, Package, ExternalLink, ChevronDown, ChevronUp, Copy, Check } from 'lucide-vue-next'
 
 useHead({
-  title: 'License - SheepCombWeb',
   meta: [
-    { name: 'description', content: 'Licenses and third-party notices for SheepCombWeb' }
+    { name: 'description', content: 'Licenses and third-party notices for SheepComb' }
   ]
 })
 

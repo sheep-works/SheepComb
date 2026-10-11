@@ -5,6 +5,8 @@ declare global {
   }
 }
 
+import { getPageTitle } from '~/utils/title'
+
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
   const measurementId = (config.public.gaMeasurementId as string) || 'G-PFT0GHJFSL'
@@ -20,18 +22,21 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   // SPA ページ遷移時の page_view イベント送信
-  // 初回ロード時は HTML 内の gtag('config', '...') により自動送信されるため、2回目以降の遷移で送信
   const router = useRouter()
   let isFirstLoad = true
 
   router.afterEach((to) => {
+    const title = getPageTitle(to)
+
     if (isFirstLoad) {
       isFirstLoad = false
+      window.gtag('set', { page_title: title })
       return
     }
+
     nextTick(() => {
       window.gtag('event', 'page_view', {
-        page_title: document.title,
+        page_title: title,
         page_location: window.location.href,
         page_path: to.fullPath,
         send_to: measurementId,

@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { BookOpen, Video, ExternalLink, Play, CheckCircle2 } from 'lucide-vue-next'
+import { 
+  BookOpen, Video, ExternalLink, Play, 
+  Database, Split, Bell as BellIcon, Search, Layers 
+} from 'lucide-vue-next'
 
 definePageMeta({
   title: 'Manual',
@@ -9,6 +12,44 @@ const DOCS_URL = 'https://lambuage.com/sheep-comb'
 const YOUTUBE_PLAYLIST_ID = 'PLZo3GhAxn8uE'
 const YOUTUBE_URL = `https://www.youtube.com/playlist?list=${YOUTUBE_PLAYLIST_ID}`
 const YOUTUBE_EMBED_URL = `https://www.youtube-nocookie.com/embed/videoseries?list=${YOUTUBE_PLAYLIST_ID}&rel=0`
+
+const docLinks = [
+  {
+    num: '1',
+    category: '対訳解析（SheepShuttle）',
+    title: 'SheepShuttle 対訳データ処理の基本フロー',
+    url: 'https://lambuage.com/docs/sheep-comb/11_shuttle_steps_desc.html',
+    icon: Database,
+  },
+  {
+    num: '2',
+    category: '対訳作成（SheepGroom）',
+    title: 'SheepGroom 各ステップの詳細手順',
+    url: 'https://lambuage.com/docs/sheep-comb/21_groom_steps_desc.html',
+    icon: Split,
+  },
+  {
+    num: '3',
+    category: 'LQA（SheepBell）',
+    title: 'SheepBell 各ステップの詳細手順',
+    url: 'https://lambuage.com/docs/sheep-comb/31_bell_steps_desc.html',
+    icon: BellIcon,
+  },
+  {
+    num: '4',
+    category: 'コンコーダンス',
+    title: '対訳検索（コンコーダンス）',
+    url: 'https://lambuage.com/docs/sheep-comb/91_tools_concordance.html',
+    icon: Search,
+  },
+  {
+    num: '5',
+    category: '差分',
+    title: 'テキスト比較（差分ツール）',
+    url: 'https://lambuage.com/docs/sheep-comb/92_tools_diff.html',
+    icon: Layers,
+  },
+]
 </script>
 
 <template>
@@ -36,23 +77,29 @@ const YOUTUBE_EMBED_URL = `https://www.youtube-nocookie.com/embed/videoseries?li
         </div>
 
         <div class="card-body">
-          <h2 class="card-title">{{ $t('manual.docs_title') }}</h2>
-          <p class="card-desc">{{ $t('manual.docs_desc') }}</p>
+          <h2 class="card-title">{{ $t('manual.docs_title', 'ドキュメント目次') }}</h2>
+          <p class="card-desc">各機能の詳細な仕様やステップ手順ガイドに直接アクセスできます。</p>
 
-          <ul class="feature-list">
-            <li>
-              <CheckCircle2 :size="16" class="check-icon" />
-              <span>全ツールの詳細仕様・パラメータ解説</span>
-            </li>
-            <li>
-              <CheckCircle2 :size="16" class="check-icon" />
-              <span>XLIFF / TMX / TBX 等のデータ構造ガイド</span>
-            </li>
-            <li>
-              <CheckCircle2 :size="16" class="check-icon" />
-              <span>トラブルシューティング＆FAQ</span>
-            </li>
-          </ul>
+          <div class="doc-toc-list">
+            <a
+              v-for="item in docLinks"
+              :key="item.num"
+              :href="item.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="doc-toc-item"
+            >
+              <div class="doc-toc-badge">{{ item.num }}</div>
+              <div class="doc-toc-icon">
+                <component :is="item.icon" :size="16" />
+              </div>
+              <div class="doc-toc-text">
+                <div class="doc-toc-category">{{ item.category }}</div>
+                <div class="doc-toc-title">{{ item.title }}</div>
+              </div>
+              <ExternalLink :size="14" class="doc-toc-arrow" />
+            </a>
+          </div>
         </div>
 
         <div class="card-footer">
@@ -62,7 +109,7 @@ const YOUTUBE_EMBED_URL = `https://www.youtube-nocookie.com/embed/videoseries?li
             rel="noopener noreferrer"
             class="action-btn docs-btn"
           >
-            <span>{{ $t('manual.docs_btn') }}</span>
+            <span>ドキュメント総合トップを開く</span>
             <ExternalLink :size="18" />
           </a>
         </div>
@@ -233,27 +280,110 @@ const YOUTUBE_EMBED_URL = `https://www.youtube-nocookie.com/embed/videoseries?li
   margin-bottom: 24px;
 }
 
-/* Feature List */
-.feature-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 24px 0;
+/* Document TOC List */
+.doc-toc-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 24px;
 }
 
-.feature-list li {
+.doc-toc-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.doc-toc-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.doc-toc-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent-light);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-accent);
+}
+
+.doc-toc-item:hover .doc-toc-badge {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.doc-toc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.doc-toc-item:hover .doc-toc-icon {
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.doc-toc-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-toc-category {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.doc-toc-title {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.doc-toc-item:hover .doc-toc-title {
   color: var(--text-secondary);
 }
 
-.check-icon {
-  color: var(--accent);
+.doc-toc-arrow {
+  color: var(--text-muted);
   flex-shrink: 0;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+}
+
+.doc-toc-item:hover .doc-toc-arrow {
+  color: var(--accent);
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 /* Video Container (16:9 Aspect Ratio) */
