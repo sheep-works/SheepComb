@@ -9,7 +9,7 @@ definePageMeta({
 })
 
 import { ref, computed, watch, onMounted } from 'vue'
-import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check, Settings2, Copy } from 'lucide-vue-next'
+import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check, Settings2, Copy, Layers, MessageSquareCode } from 'lucide-vue-next'
 // Note: Using relative paths instead of Nuxt aliases (~~, ~, @) to ensure stable resolution.
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { useI18n } from 'vue-i18n'
@@ -23,7 +23,8 @@ const { t } = useI18n()
 
 // Collapse state
 const isProviderOpen = ref(false)
-const isRequestOpen = ref(true)
+const isChunkOpen = ref(true)
+const isPromptOpen = ref(true)
 const isSummaryOpen = ref(true)
 
 onMounted(async () => {
@@ -101,6 +102,7 @@ const chunkOptions = ref<ChunkOptions>({
   src: true,
   tgt: true,
   note: true,
+  memo: true,
   history: false,
   terms: false,
   useToon: false,
@@ -165,11 +167,11 @@ watch(requestTarget, (newTarget, oldTarget) => {
 
   // Update default chunk options for non-custom targets
   if (newTarget === 'CHECK' || newTarget === 'DIFF') {
-    chunkOptions.value = { src: true, tgt: true, note: true, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
+    chunkOptions.value = { src: true, tgt: true, note: true, memo: true, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
   } else if (newTarget === 'TRANSLATE') {
-    chunkOptions.value = { src: true, tgt: false, note: true, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
+    chunkOptions.value = { src: true, tgt: false, note: true, memo: true, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
   } else if (newTarget === 'PROOF') {
-    chunkOptions.value = { src: false, tgt: true, note: false, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
+    chunkOptions.value = { src: false, tgt: true, note: false, memo: false, history: false, terms: false, useToon: useToon.value, format: useToon.value ? 'toon' : 'jsonl' }
   }
 })
 
@@ -652,11 +654,12 @@ function getStatusColor(status: string) {
           </div>
         </AppCardCollapse>
 
-        <AppCardCollapse v-model:open="isRequestOpen" :title="$t('shuttle.api.title_request')">
+        <!-- Chunk Settings & Creation Card -->
+        <AppCardCollapse v-model:open="isChunkOpen" :title="$t('shuttle.api.title_chunks')">
           <template #header>
             <div class="card-title-group">
-              <Settings2 :size="16" class="header-icon" />
-              <h2 class="card-title">{{ $t('shuttle.api.title_request') }}</h2>
+              <Layers :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.api.title_chunks') }}</h2>
             </div>
           </template>
           <template #actions>
@@ -717,6 +720,9 @@ function getStatusColor(status: string) {
                     <label class="checkbox-label">
                       <input type="checkbox" v-model="chunkOptions.note" /> note
                     </label>
+                    <label class="checkbox-label">
+                      <input type="checkbox" v-model="chunkOptions.memo" /> memo
+                    </label>
                     <label class="checkbox-label" :title="mode === 'units' ? 'ShWvDataからのみ抽出されます' : ''">
                       <input type="checkbox" v-model="chunkOptions.history" :disabled="mode === 'units'" /> history
                     </label>
@@ -728,6 +734,34 @@ function getStatusColor(status: string) {
               </transition>
             </div>
 
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="config-label" style="margin-bottom: 0;">チャンクサイズ上限 (文字数):</label>
+                <input type="number" v-model="chunkMaxLength" class="input-field" style="width: 100px; padding: 4px;" />
+              </div>
+              <label class="checkbox-label" title="TOON形式（Token-Oriented Object Notation）でチャンクを作成します。historyやtermの使用は非推奨です" style="font-size: 0.85rem; cursor: pointer; user-select: none;">
+                <input type="checkbox" v-model="useToon" /> TOONを使用（実験的）
+              </label>
+            </div>
+
+            <div class="button-row">
+              <button class="btn-action secondary full-width" @click="createChunks" :disabled="!store.hasUnits && !store.hasData && (mode !== 'direct' || !directInputText.trim())">
+                <RefreshCw :size="16" /> {{ $t('shuttle.api.btn_create_chunks') }}
+              </button>
+            </div>
+          </div>
+        </AppCardCollapse>
+
+        <!-- Prompt & Request Execution Card -->
+        <AppCardCollapse v-model:open="isPromptOpen" :title="$t('shuttle.api.title_prompt')">
+          <template #header>
+            <div class="card-title-group">
+              <MessageSquareCode :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.api.title_prompt') }}</h2>
+            </div>
+          </template>
+
+          <div class="config-section">
             <div class="config-group">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label class="config-label" style="margin-bottom: 0;">{{ $t('shuttle.api.lbl_prompt') }}</label>
@@ -751,22 +785,11 @@ function getStatusColor(status: string) {
               <textarea v-model="userPrompt" class="prompt-textarea"></textarea>
             </div>
 
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; margin-top: 12px; flex-wrap: wrap;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <label class="config-label" style="margin-bottom: 0;">チャンクサイズ上限 (文字数):</label>
-                <input type="number" v-model="chunkMaxLength" class="input-field" style="width: 100px; padding: 4px;" />
-              </div>
-              <label class="checkbox-label" title="TOON形式（Token-Oriented Object Notation）でチャンクを作成します。historyやtermの使用は非推奨です" style="font-size: 0.85rem; cursor: pointer; user-select: none;">
-                <input type="checkbox" v-model="useToon" /> TOONを使用（実験的）
-              </label>
-            </div>
-
             <div class="button-row">
-              <button class="btn-action secondary" @click="createChunks" :disabled="!store.hasUnits && !store.hasData">
-                <RefreshCw :size="16" /> {{ $t('shuttle.api.btn_create_chunks') }}
-              </button>
-              <button class="btn-action primary" @click="requestWithConfirm(processAll)" :disabled="!store.hasChunks || isRequesting">
-                <Send :size="16" /> {{ $t('shuttle.api.btn_process_all') }}
+              <button class="btn-action primary full-width" @click="requestWithConfirm(processAll)" :disabled="!store.hasChunks || isRequesting">
+                <Loader2 v-if="isRequesting" :size="16" class="spin" />
+                <Send v-else :size="16" />
+                {{ isRequesting ? 'リクエスト処理中...' : $t('shuttle.api.btn_process_all') }}
               </button>
             </div>
           </div>
@@ -1091,6 +1114,10 @@ function getStatusColor(status: string) {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border);
+}
+
+.btn-action.full-width {
+  width: 100%;
 }
 
 .btn-action:hover:not(:disabled) {

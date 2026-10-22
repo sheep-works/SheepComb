@@ -31,8 +31,17 @@ export default defineNuxtConfig({
   modules: [
     '@pinia/nuxt',
     '@pinia-plugin-persistedstate/nuxt',
-    '@nuxtjs/i18n'
+    '@nuxtjs/i18n',
+    '@nuxtjs/sitemap'
   ],
+
+  site: {
+    url: 'https://lambuage.com'
+  },
+
+  sitemap: {
+    sitemaps: false
+  },
 
   i18n: {
     locales: [

@@ -186,6 +186,8 @@
       "err_offline": "API 服务器 (SheepBobbin) 处于离线状态。请确认其是否正在运行。",
       "title_provider_settings": "Bobbin 连接",
       "title_request": "请求设置",
+      "title_chunks": "分块设置与创建",
+      "title_prompt": "提示词与请求",
       "lbl_chunk_mode": "分块模式",
       "mode_units_desc": "无需解析与结构化直接请求",
       "mode_data_desc": "利用TM/TB注重上下文语境",

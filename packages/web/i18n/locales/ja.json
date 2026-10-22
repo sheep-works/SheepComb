@@ -186,6 +186,8 @@
       "err_offline": "API サーバー (SheepBobbin) がオフラインです。起動しているか確認してください。",
       "title_provider_settings": "Bobbin 接続",
       "title_request": "リクエスト設定",
+      "title_chunks": "チャンク設定・作成",
+      "title_prompt": "プロンプト & リクエスト",
       "lbl_chunk_mode": "チャンク作成モード",
       "mode_units_desc": "解析＆構造化不要でリクエスト",
       "mode_data_desc": "TM/TBを利用してコンテクスト重視",

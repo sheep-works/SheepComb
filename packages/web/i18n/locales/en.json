@@ -186,6 +186,8 @@
       "err_offline": "API Server (SheepBobbin) is offline. Please make sure it is running.",
       "title_provider_settings": "Bobbin Connection",
       "title_request": "Request Settings",
+      "title_chunks": "Chunk Settings & Creation",
+      "title_prompt": "Prompt & Request",
       "lbl_chunk_mode": "Chunking Mode",
       "mode_units_desc": "Request directly without analysis/structuring",
       "mode_data_desc": "Context-focused using TM/TB reference",

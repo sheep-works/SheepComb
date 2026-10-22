@@ -308,9 +308,9 @@ function doClear() {
                 <input type="checkbox" v-model="qaConfig.check_tags" :disabled="!hasData" />
                 <span>タグ / プレースホルダー</span>
               </label>
-              <label class="checkbox-label">
+              <label class="checkbox-label" title="候補訳語の含有および使用禁止用語 (forbiddens) の混入を検証します">
                 <input type="checkbox" v-model="qaConfig.check_terms" :disabled="!hasData" />
-                <span>用語集 (TB) 含有</span>
+                <span>用語集 (TB) 含有 / 禁止用語</span>
               </label>
               <label class="checkbox-label">
                 <input type="checkbox" v-model="qaConfig.check_consistency" :disabled="!hasData" />
@@ -356,8 +356,8 @@ function doClear() {
                 <button class="action-btn" @click="doExportShwv" :disabled="!hasData" style="grid-column: span 2; background: var(--accent-glow); color: var(--accent-light); border-color: var(--border-accent);">
                   <FileJson :size="16" /> ShWvData (JSON)
                 </button>
-                <button class="action-btn" @click="doExportJson" :disabled="!hasData">
-                  <FileJson :size="16" /> Raw JSON
+                <button class="action-btn" @click="doExportJson" :disabled="!hasData" title="src/tgt ペアの JSON をエクスポート">
+                  <FileJson :size="16" /> Paired JSON
                 </button>
                 <button class="action-btn" @click="doExportCsv" :disabled="!hasData">
                   <FileText :size="16" /> CSV
@@ -464,7 +464,7 @@ function doClear() {
               </div>
               <div v-else-if="!hasRunQa" class="empty-state">
                 <ShieldCheck :size="48" class="empty-icon" style="color: var(--accent);" />
-                <p>左パネルの「QAチェック実行」ボタンをクリックすると、数字・タグ・用語・整合性の検証結果がここに表示されます。</p>
+                <p>左パネルの「QAチェック実行」ボタンをクリックすると、数字・タグ・用語（必須/禁止語）・整合性の検証結果がここに表示されます。</p>
                 <button class="btn-qa-run" @click="doRunQa" style="margin-top: 16px; width: auto; padding: 8px 24px;">
                   QAチェック実行
                 </button>
@@ -485,7 +485,7 @@ function doClear() {
                     <strong>{{ qaCounts.Tag }}</strong>
                   </div>
                   <div class="chip chip-term" :class="{ active: selectedIssueFilter === 'Term' }" @click="selectedIssueFilter = 'Term'">
-                    <span>用語 (Term)</span>
+                    <span>用語・禁止語 (Term)</span>
                     <strong>{{ qaCounts.Term }}</strong>
                   </div>
                   <div class="chip chip-consistency" :class="{ active: selectedIssueFilter === 'Consistency' }" @click="selectedIssueFilter = 'Consistency'">
@@ -503,7 +503,7 @@ function doClear() {
                   <CheckCircle2 :size="32" style="color: var(--success);" />
                   <div>
                     <h4>すべてチェックをクリアしました！</h4>
-                    <p>数字、タグ、用語集、100%一致行の整合性に不整合は見つかりませんでした。</p>
+                    <p>数字、タグ、用語集（必須・禁止用語）、100%一致行の整合性に不整合は見つかりませんでした。</p>
                   </div>
                 </div>
 
@@ -511,7 +511,9 @@ function doClear() {
                   <div v-for="(issue, idx) in filteredQaIssues" :key="idx" class="qa-issue-card">
                     <div class="qa-issue-header">
                       <span class="issue-idx">行 {{ issue.idx }}</span>
-                      <span :class="['issue-type-tag', issue.issue_type.toLowerCase()]">{{ issue.issue_type }}</span>
+                      <span :class="['issue-type-tag', issue.issue_type.toLowerCase(), { 'forbidden': issue.message.startsWith('Forbidden') }]">
+                        {{ issue.message.startsWith('Forbidden') ? '禁止用語' : issue.issue_type }}
+                      </span>
                       <span class="issue-msg">{{ issue.message }}</span>
                     </div>
                     <!-- 原文と訳文のプレビュー -->
@@ -1011,6 +1013,7 @@ function doClear() {
 .issue-type-tag.number { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
 .issue-type-tag.tag { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 .issue-type-tag.term { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+.issue-type-tag.forbidden { background: rgba(239, 68, 68, 0.18); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 .issue-type-tag.consistency { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
 .issue-type-tag.unmodifiedpe { background: rgba(249, 115, 22, 0.15); color: #f97316; }
 

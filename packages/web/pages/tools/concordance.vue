@@ -219,14 +219,14 @@ const handleUpload = async (event: Event) => {
                 <tr>
                   <th class="w-idx">#</th>
                   <th class="w-file" v-if="results.some(r => r.file)">File</th>
-                  <th>Source</th>
-                  <th>Target</th>
+                  <th class="w-src">Source</th>
+                  <th class="w-tgt">Target</th>
                   <th class="w-note" v-if="results.some(r => r.note)">Note</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in results" :key="item.id">
-                  <td class="idx">{{ item.id + 1 }}</td>
+                <tr v-for="(item, index) in results" :key="item.id ?? index">
+                  <td class="idx">{{ typeof item.id === 'number' && !isNaN(item.id) ? item.id + 1 : (item.idx != null && !isNaN(Number(item.idx)) ? Number(item.idx) + 1 : index + 1) }}</td>
                   <td class="file" v-if="results.some(r => r.file)">{{ item.file }}</td>
                   <td class="text src">{{ item.src }}</td>
                   <td class="text tgt">{{ item.tgt }}</td>
@@ -259,7 +259,7 @@ const handleUpload = async (event: Event) => {
 
 .concordance-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 24px;
 }
 
@@ -500,11 +500,13 @@ const handleUpload = async (event: Event) => {
 .table-container {
   width: 100%;
   overflow-x: auto;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .search-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .search-table th {
@@ -526,17 +528,63 @@ const handleUpload = async (event: Event) => {
   font-size: 0.88rem;
   vertical-align: top;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.w-idx { width: 50px; }
-.w-file { width: 120px; max-width: 120px; }
-.w-note { width: 180px; max-width: 240px; }
+.w-idx {
+  width: 52px;
+  text-align: center;
+}
 
-.idx { color: var(--text-muted); font-size: 0.75rem; font-family: monospace; }
-.file { font-size: 0.75rem; color: var(--text-muted); word-break: break-all; }
-.src { color: var(--text-primary); font-weight: 500; }
-.tgt { color: var(--text-secondary); }
-.note { color: var(--text-muted); font-size: 0.8rem; line-height: 1.4; word-break: break-all; }
+.w-file {
+  width: 130px;
+}
+
+.w-src,
+.w-tgt {
+  width: auto;
+}
+
+.w-note {
+  width: 180px;
+}
+
+.idx {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: monospace;
+  text-align: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.file {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.src {
+  color: var(--text-primary);
+  font-weight: 500;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.tgt {
+  color: var(--text-secondary);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 
 .empty-state {
   flex: 1;

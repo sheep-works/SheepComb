@@ -111,6 +111,14 @@ function nextUnit() {
 
 function handleKeyDown(e: KeyboardEvent) {
   if (selectedIdx.value === null) return
+  const target = e.target as HTMLElement | null
+  const isInputActive = Boolean(target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable))
+  if (isInputActive) {
+    if (e.key === 'Escape') {
+      target?.blur()
+    }
+    return
+  }
   if (e.key === 'Escape') {
     closeModal()
   } else if (e.key === 'ArrowLeft') {
@@ -289,6 +297,10 @@ defineExpose({ resetPage, openModal })
               <span class="jv-label jv-label-pre">PRE</span>
               <pre>{{ unit.pre }}</pre>
             </div>
+            <div class="jv-field" v-if="unit.memo">
+              <span class="jv-label jv-label-memo">MEMO</span>
+              <pre>{{ unit.memo }}</pre>
+            </div>
           </td>
         </tr>
         <!-- TM References -->
@@ -319,7 +331,10 @@ defineExpose({ resetPage, openModal })
           <td class="jv-content">
             <div class="jv-field jv-field-sm">
               <span class="jv-label jv-label-ref">{{ tb.src }}</span>
-              <div>{{ tb.tgts.join(' / ') }}</div>
+              <div>{{ tb.tgts?.length ? tb.tgts.join(' / ') : '' }}</div>
+              <div v-if="tb.forbiddens?.length" class="jv-tb-forbiddens-inline">
+                <span class="jv-badge-forbidden">禁止:</span> {{ tb.forbiddens.join(' / ') }}
+              </div>
             </div>
           </td>
         </tr>
@@ -420,6 +435,18 @@ defineExpose({ resetPage, openModal })
                   <span class="jv-label">NOTE (備考)</span>
                 </div>
                 <div class="jv-text-box jv-text-note">{{ selectedUnit.note }}</div>
+              </div>
+
+              <div class="jv-field-block">
+                <div class="jv-field-header">
+                  <span class="jv-label jv-label-memo">MEMO (ユーザー備考)</span>
+                </div>
+                <textarea
+                  v-model="selectedUnit.memo"
+                  class="jv-textarea-memo"
+                  placeholder="メモを入力..."
+                  rows="3"
+                ></textarea>
               </div>
             </div>
 
@@ -533,9 +560,15 @@ defineExpose({ resetPage, openModal })
               </button>
               <div v-show="isTbOpen" class="jv-tb-grid">
                 <div v-for="(tb, tbi) in selectedUnit.ref.tb" :key="'modal-tb' + String(tbi)" class="jv-tb-card">
-                  <div class="jv-tb-src">{{ tb.src }}</div>
-                  <div class="jv-tb-arrow">→</div>
-                  <div class="jv-tb-tgt">{{ tb.tgts.join(' / ') }}</div>
+                  <div class="jv-tb-main">
+                    <div class="jv-tb-src">{{ tb.src }}</div>
+                    <div class="jv-tb-arrow">→</div>
+                    <div class="jv-tb-tgt">{{ tb.tgts?.length ? tb.tgts.join(' / ') : '(なし)' }}</div>
+                  </div>
+                  <div v-if="tb.forbiddens?.length" class="jv-tb-forbiddens">
+                    <span class="jv-badge-forbidden">禁止</span>
+                    <span class="jv-forbiddens-text">{{ tb.forbiddens.join(' / ') }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -792,6 +825,11 @@ defineExpose({ resetPage, openModal })
 .jv-label-diff {
   background: rgba(244, 63, 94, 0.12);
   color: #fb7185;
+}
+
+.jv-label-memo {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
 }
 
 .jv-ref-row td {
@@ -1194,6 +1232,33 @@ defineExpose({ resetPage, openModal })
   font-size: 0.88rem;
 }
 
+.jv-textarea-memo {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-left: 4px solid #a855f7;
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.jv-textarea-memo:focus {
+  outline: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+}
+
+.jv-textarea-memo::placeholder {
+  color: var(--text-muted);
+}
+
 /* Relation Cards */
 .jv-relation-list {
   display: flex;
@@ -1409,6 +1474,51 @@ defineExpose({ resetPage, openModal })
 
 .jv-tb-tgt {
   color: var(--text-primary);
+}
+
+.jv-tb-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.jv-tb-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jv-tb-forbiddens {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.jv-tb-forbiddens-inline {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: #f87171;
+}
+
+.jv-badge-forbidden {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.jv-forbiddens-text {
+  color: #ef4444;
+  word-break: break-all;
 }
 
 :deep(ins) {
