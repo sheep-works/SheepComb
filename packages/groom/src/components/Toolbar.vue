@@ -59,8 +59,9 @@
             ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm' 
             : 'bg-[#1a1d2e] text-white/60 border-white/10 hover:text-white/90 hover:bg-[#252a3a]'"
           class="px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1 font-medium"
+          :title="filterOnlyUnmatch ? 'フィルタを解除して全件表示に戻す' : '行数が不一致のブロックのみを抽出表示'"
         >
-          <span>⚠️ 不一致のみ</span>
+          <span>{{ filterOnlyUnmatch ? '🔄 全件表示に戻す' : '⚠️ 不一致のみ' }}</span>
         </button>
       </div>
 
@@ -82,6 +83,15 @@
           class="px-3 py-1.5 rounded-lg bg-[#1a1d2e] hover:bg-[#252a3a] text-amber-300 border border-amber-500/30 hover:border-amber-500/50 transition-all flex items-center gap-1.5 font-medium"
         >
           ↵ 全 {|} を改行に
+        </button>
+
+        <!-- 次の後で改行 (文分割) -->
+        <button 
+          @click="$emit('open-split-modal')"
+          title="指定した文字（「。！？」など）の直後で改行を一括挿入します"
+          class="px-3 py-1.5 rounded-lg bg-[#1a1d2e] hover:bg-[#252a3a] text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 transition-all flex items-center gap-1.5 font-medium"
+        >
+          ↵ 次の後で改行...
         </button>
 
         <!-- TSV コピー -->
@@ -130,6 +140,7 @@ const emit = defineEmits<{
   (e: 'toggle-filter-unmatch'): void;
   (e: 'pad-all'): void;
   (e: 'replace-all-pipes'): void;
+  (e: 'open-split-modal'): void;
   (e: 'copy-tsv'): void;
   (e: 'export-xlsx'): void;
   (e: 'open-importer'): void;

@@ -76,6 +76,8 @@
         @push-down="(remaining, pushed) => emit('push-down', index, 'source', remaining, pushed)"
         @toggle-side="focusTarget"
         @navigate-vertical="(dir) => emit('navigate-editor', index, 'source', dir)"
+        @shift-up="emit('shift-up', index, 'source')"
+        @shift-down="emit('shift-down', index, 'source')"
       />
       <AlignEditor 
         ref="tgtEditorRef"
@@ -85,6 +87,8 @@
         @push-down="(remaining, pushed) => emit('push-down', index, 'target', remaining, pushed)"
         @toggle-side="focusSource"
         @navigate-vertical="(dir) => emit('navigate-editor', index, 'target', dir)"
+        @shift-up="emit('shift-up', index, 'target')"
+        @shift-down="emit('shift-down', index, 'target')"
       />
     </div>
 
@@ -116,6 +120,8 @@ const emit = defineEmits<{
   (e: 'remove-block', index: number): void;
   (e: 'push-down', index: number, side: 'source' | 'target', remainingText: string, pushedText: string): void;
   (e: 'navigate-editor', index: number, side: 'source' | 'target', direction: 'up' | 'down'): void;
+  (e: 'shift-up', index: number, side: 'source' | 'target'): void;
+  (e: 'shift-down', index: number, side: 'source' | 'target'): void;
 }>();
 
 const srcEditorRef = ref<InstanceType<typeof AlignEditor> | null>(null);

@@ -25,6 +25,24 @@
         <span class="line-count-badge">
           {{ lineCount }} 行
         </span>
+
+        <!-- 一方のみ繰り上げ / 繰り下げ操作 -->
+        <div class="shift-actions-group">
+          <button 
+            @click="emit('shift-up')"
+            :title="`このブロックの${isSource ? '原文' : '訳文'}を削除し、以降の${isSource ? '原文' : '訳文'}を上に繰り上げます`"
+            class="btn-shift-action btn-shift-up"
+          >
+            <span>⬆️ 繰上</span>
+          </button>
+          <button 
+            @click="emit('shift-down')"
+            :title="`この位置に空枠を挿入し、以降の${isSource ? '原文' : '訳文'}を下に繰り下げます`"
+            class="btn-shift-action btn-shift-down"
+          >
+            <span>⬇️ 繰下</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -59,6 +77,8 @@ const emit = defineEmits<{
   (e: 'push-down', remainingText: string, pushedText: string): void;
   (e: 'toggle-side'): void;
   (e: 'navigate-vertical', direction: 'up' | 'down'): void;
+  (e: 'shift-up'): void;
+  (e: 'shift-down'): void;
 }>();
 
 const editorContainer = ref<HTMLDivElement | null>(null);
@@ -391,6 +411,40 @@ onBeforeUnmount(() => {
   background: var(--bg-hover);
   color: var(--text-secondary);
   font-family: monospace;
+}
+
+.shift-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+.btn-shift-action {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-shift-up:hover {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.btn-shift-down:hover {
+  background: rgba(20, 184, 166, 0.15);
+  color: #5eead4;
+  border-color: rgba(20, 184, 166, 0.3);
 }
 
 .cm-wrapper {

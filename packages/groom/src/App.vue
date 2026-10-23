@@ -24,6 +24,7 @@
         @toggle-filter-unmatch="filterOnlyUnmatch = !filterOnlyUnmatch"
         @pad-all="handlePadAll"
         @replace-all-pipes="handleReplaceAllPipes"
+        @open-split-modal="showSplitModal = true"
         @copy-tsv="handleCopyTsv"
         @export-xlsx="handleExportXlsx"
         @open-importer="showImporter = true"
@@ -47,6 +48,15 @@
 
           <div class="flex items-center space-x-3">
             <button 
+              v-if="filterOnlyUnmatch"
+              @click="filterOnlyUnmatch = false"
+              class="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-medium border border-amber-500/30 transition-all flex items-center gap-1.5 shadow-sm"
+              title="不一致のみフィルタを解除して全件表示"
+            >
+              <span>⚠️ 不一致のみ表示中</span>
+              <span class="text-amber-300/70 hover:text-white font-bold ml-0.5">✕</span>
+            </button>
+            <button 
               @click="addNewBlock"
               class="px-3.5 py-1.5 rounded-xl bg-[#1a1d2e] hover:bg-[#252a3a] text-white/90 text-xs font-semibold border border-white/10 hover:border-white/20 transition-all flex items-center gap-1.5 shadow-sm"
             >
@@ -68,22 +78,38 @@
             @remove-block="handleRemoveBlock"
             @push-down="handlePushDown"
             @navigate-editor="handleNavigateEditor"
+            @shift-up="handleShiftUp"
+            @shift-down="handleShiftDown"
           />
         </div>
 
         <!-- 空状態 -->
         <div v-else class="text-center py-16 bg-[#161822]/60 rounded-3xl border border-dashed border-white/10 space-y-4">
-          <div class="text-4xl">📄</div>
+          <div class="text-4xl">{{ unmatchCount === 0 && filterOnlyUnmatch ? '🎉' : '📄' }}</div>
           <div class="space-y-1">
-            <p class="text-sm font-semibold text-white/80">表示できるブロックがありません</p>
-            <p class="text-xs text-white/40">ファイルを読み込むか、フィルタを解除してください</p>
+            <p class="text-sm font-semibold text-white/80">
+              {{ unmatchCount === 0 && filterOnlyUnmatch ? 'すべてのブロックの行数が一致しました！' : '表示できるブロックがありません' }}
+            </p>
+            <p class="text-xs text-white/40">
+              {{ unmatchCount === 0 && filterOnlyUnmatch ? '不一致ブロックがすべて解消されました。フィルタを解除して全ブロックを確認・編集できます。' : (filterOnlyUnmatch || searchQuery ? 'フィルタまたは検索条件をリセットして全件表示できます' : 'ファイルを読み込んでください') }}
+            </p>
           </div>
-          <button 
-            @click="currentView = 'pairing'"
-            class="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-teal-900/30 transition-all"
-          >
-            ファイル選択画面へ戻る
-          </button>
+          <div class="flex items-center justify-center gap-3">
+            <button 
+              v-if="filterOnlyUnmatch || searchQuery"
+              @click="filterOnlyUnmatch = false; searchQuery = ''"
+              class="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-teal-900/30 transition-all flex items-center gap-1.5"
+            >
+              <span>🔄</span>
+              <span>フィルタを解除して全ブロックを表示</span>
+            </button>
+            <button 
+              @click="currentView = 'pairing'"
+              class="px-4 py-2 bg-[#1a1d2e] hover:bg-[#252a3a] text-white/80 border border-white/10 text-xs font-semibold rounded-xl transition-all"
+            >
+              ファイル選択画面へ戻る
+            </button>
+          </div>
         </div>
 
       </main>
@@ -96,6 +122,15 @@
       @file-loaded="handleFileLoaded"
       @text-loaded="handleTextLoaded"
       @close="showImporter = false"
+    />
+
+    <!-- 次の後で改行 (文分割) モーダル -->
+    <SplitNewlineModal 
+      v-if="showSplitModal"
+      :total-blocks="currentBlocks.length"
+      :unmatch-count="unmatchCount"
+      @apply="handleApplySplit"
+      @close="showSplitModal = false"
     />
 
     <!-- トースト通知 -->
@@ -112,11 +147,12 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue';
 import type { SheetData, AlignBlock } from './types/align';
-import { parseXlsx, parseTsvOrText, exportToXlsx, exportToPaddedTsv } from './utils/parser';
+import { parseXlsx, parseTsvOrText, exportToXlsx, exportAllSheetsToXlsx, exportToPaddedTsv, splitTextAfterChars } from './utils/parser';
 import PairingView from './components/PairingView.vue';
 import Toolbar from './components/Toolbar.vue';
 import BlockCard from './components/BlockCard.vue';
 import DropZone from './components/DropZone.vue';
+import SplitNewlineModal from './components/SplitNewlineModal.vue';
 
 // 画面ステート: 'pairing' (ファイル選択) ↔ 'editor' (アラインエディタ)
 const currentView = ref<'pairing' | 'editor'>('pairing');
@@ -126,6 +162,7 @@ const activeSheetIndex = ref(0);
 const filterOnlyUnmatch = ref(false);
 const searchQuery = ref('');
 const showImporter = ref(false);
+const showSplitModal = ref(false);
 const toastMessage = ref('');
 
 const cardRefs = ref<Map<number, InstanceType<typeof BlockCard>>>(new Map());
@@ -313,6 +350,57 @@ function addNewBlock() {
   showToast('➕ 新規ブロックを追加しました');
 }
 
+// 一方のブロックのみ削除（繰り上げ）
+function handleShiftUp(index: number, side: 'source' | 'target') {
+  const sideKey = side === 'source' ? 'sourceText' : 'targetText';
+  const label = side === 'source' ? '原文' : '訳文';
+
+  if (!confirm(`ブロック #${index + 1} の【${label}】を削除し、以降の${label}を1段上に繰り上げますか？`)) {
+    return;
+  }
+
+  // index から末尾直前までを 1 つずつ上にシフト
+  for (let i = index; i < currentBlocks.value.length - 1; i++) {
+    currentBlocks.value[i][sideKey] = currentBlocks.value[i + 1][sideKey];
+  }
+  // 最後のブロックの当該列を空にする
+  currentBlocks.value[currentBlocks.value.length - 1][sideKey] = '';
+
+  // 末尾ブロックが原文・訳文ともに空になった場合は末尾ブロックを削除（1ブロックのみの場合は残す）
+  const lastBlock = currentBlocks.value[currentBlocks.value.length - 1];
+  if (lastBlock && !lastBlock.sourceText.trim() && !lastBlock.targetText.trim() && currentBlocks.value.length > 1) {
+    currentBlocks.value.pop();
+  }
+
+  showToast(`⬆️ ブロック #${index + 1} 以降の【${label}】を1段上に繰り上げました`);
+}
+
+// 一方のブロックのみ繰り下げ（空枠挿入）
+function handleShiftDown(index: number, side: 'source' | 'target') {
+  const sideKey = side === 'source' ? 'sourceText' : 'targetText';
+  const label = side === 'source' ? '原文' : '訳文';
+
+  // 最後のブロックの当該列にテキストがある場合、新ブロックを末尾に追加して押し出せるようにする
+  const lastBlock = currentBlocks.value[currentBlocks.value.length - 1];
+  if (lastBlock && lastBlock[sideKey]?.trim() !== '') {
+    currentBlocks.value.push({
+      id: `block-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      sectionName: `Section ${currentBlocks.value.length + 1}`,
+      sourceText: '',
+      targetText: '',
+    });
+  }
+
+  // 末尾から index までを後ろに1つずつシフト
+  for (let i = currentBlocks.value.length - 1; i > index; i--) {
+    currentBlocks.value[i][sideKey] = currentBlocks.value[i - 1][sideKey];
+  }
+  // 対象ブロックの当該列を空にする
+  currentBlocks.value[index][sideKey] = '';
+
+  showToast(`⬇️ ブロック #${index + 1} の【${label}】に空枠を挿入し、以降を繰り下げました`);
+}
+
 // 全ブロック一括パディング
 function handlePadAll() {
   let count = 0;
@@ -342,6 +430,43 @@ function handleReplaceAllPipes() {
     }
   }
   showToast(`↵ 全ブロック内の {|} を改行に置換しました`);
+}
+
+// 次の後で改行 (文分割) の一括適用
+function handleApplySplit(payload: {
+  chars: string;
+  targetSide: 'all' | 'source' | 'target';
+  targetScope: 'all' | 'unmatched';
+  trimSpaces: boolean;
+}) {
+  let count = 0;
+  for (const block of currentBlocks.value) {
+    if (payload.targetScope === 'unmatched') {
+      const s = block.sourceText ? block.sourceText.split('\n').length : 0;
+      const t = block.targetText ? block.targetText.split('\n').length : 0;
+      if (s === t) continue;
+    }
+
+    let changed = false;
+    if (payload.targetSide === 'all' || payload.targetSide === 'source') {
+      const newText = splitTextAfterChars(block.sourceText, payload.chars, payload.trimSpaces);
+      if (newText !== block.sourceText) {
+        block.sourceText = newText;
+        changed = true;
+      }
+    }
+    if (payload.targetSide === 'all' || payload.targetSide === 'target') {
+      const newText = splitTextAfterChars(block.targetText, payload.chars, payload.trimSpaces);
+      if (newText !== block.targetText) {
+        block.targetText = newText;
+        changed = true;
+      }
+    }
+    if (changed) count++;
+  }
+
+  showSplitModal.value = false;
+  showToast(`↵ ${count} 件のブロックを「${payload.chars}」の後で改行分割しました`);
 }
 
 // TSV コピー
@@ -380,12 +505,17 @@ async function handleExportXlsx() {
   }
 
   // Web ブラウザ環境でのフォールバックダウンロード
-  const buffer = exportToXlsx(currentSheet.value);
-  const blob = new Blob([buffer.buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const buffer = sheets.value.length > 1
+    ? exportAllSheetsToXlsx(sheets.value)
+    : exportToXlsx(currentSheet.value);
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${currentSheet.value.sheetName || 'aligned'}_aligned.xlsx`;
+  const fileName = sheets.value.length === 1 
+    ? `${sheets.value[0].sheetName || 'aligned'}_aligned.xlsx`
+    : 'aligned_all.xlsx';
+  a.download = fileName;
   a.click();
   URL.revokeObjectURL(url);
   showToast('💾 Excel ファイルをダウンロードしました');

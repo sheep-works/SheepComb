@@ -25,6 +25,24 @@
         <span class="text-[11px] px-2 py-0.5 rounded bg-[#1a1d2e] text-white/60 font-mono border border-white/5">
           {{ lineCount }} 行
         </span>
+
+        <!-- 一方のみ繰り上げ / 繰り下げ操作 -->
+        <div class="flex items-center space-x-1 border-l border-white/10 pl-2">
+          <button 
+            @click="emit('shift-up')"
+            :title="`このブロックの${isSource ? '原文' : '訳文'}を削除し、以降の${isSource ? '原文' : '訳文'}を上に繰り上げます`"
+            class="text-[11px] px-1.5 py-0.5 rounded bg-[#1a1d2e] hover:bg-rose-500/20 text-white/60 hover:text-rose-300 border border-white/5 hover:border-rose-500/30 font-sans transition-colors flex items-center gap-1"
+          >
+            <span>⬆️ 繰上</span>
+          </button>
+          <button 
+            @click="emit('shift-down')"
+            :title="`この位置に空枠を挿入し、以降の${isSource ? '原文' : '訳文'}を下に繰り下げます`"
+            class="text-[11px] px-1.5 py-0.5 rounded bg-[#1a1d2e] hover:bg-teal-500/20 text-white/60 hover:text-teal-300 border border-white/5 hover:border-teal-500/30 font-sans transition-colors flex items-center gap-1"
+          >
+            <span>⬇️ 繰下</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -59,6 +77,8 @@ const emit = defineEmits<{
   (e: 'push-down', remainingText: string, pushedText: string): void;
   (e: 'toggle-side'): void;
   (e: 'navigate-vertical', direction: 'up' | 'down'): void;
+  (e: 'shift-up'): void;
+  (e: 'shift-down'): void;
 }>();
 
 const editorContainer = ref<HTMLDivElement | null>(null);

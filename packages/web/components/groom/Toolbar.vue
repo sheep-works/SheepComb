@@ -114,6 +114,16 @@
             <span>{|}置換</span>
           </button>
 
+          <!-- 次の後で改行 -->
+          <button 
+            @click="$emit('open-split-modal')"
+            title="指定した文字（「。！？」など）の直後で改行を一括挿入します"
+            class="btn-tool btn-split-newline"
+          >
+            <span>↵</span>
+            <span>次の後で改行...</span>
+          </button>
+
           <!-- 検索ボックス -->
           <div class="search-input-box">
             <span class="search-icon">🔍</span>
@@ -135,21 +145,24 @@
           </div>
         </div>
 
-        <!-- 右側: 不一致時のみ v-if で表示する統計・不一致フィルタ -->
-        <div v-if="unmatchCount > 0" class="row-right unmatch-alert-area">
-          <div class="unmatch-pill">
-            <span class="unmatch-icon">🟡</span>
-            <span>不一致 <strong>{{ unmatchCount }}</strong> / {{ totalBlocks }} 件</span>
+        <!-- 右側: 不一致時またはフィルタ適用時に表示する統計・不一致フィルタ -->
+        <div v-if="unmatchCount > 0 || filterOnlyUnmatch" class="row-right unmatch-alert-area">
+          <div class="unmatch-pill" :class="{ 'pill-all-matched': unmatchCount === 0 }">
+            <span class="unmatch-icon">{{ unmatchCount === 0 ? '🟢' : '🟡' }}</span>
+            <span>
+              <template v-if="unmatchCount === 0">すべて一致 ({{ totalBlocks }} 件)</template>
+              <template v-else>不一致 <strong>{{ unmatchCount }}</strong> / {{ totalBlocks }} 件</template>
+            </span>
           </div>
 
-          <!-- 不一致のみトグル -->
+          <!-- 不一致のみトグル / 全件表示切り替え -->
           <button 
             @click="$emit('toggle-filter-unmatch')"
             :class="['btn-tool', 'filter-btn', { 'filter-active': filterOnlyUnmatch }]"
-            title="行数が不一致のブロックのみを抽出表示"
+            :title="filterOnlyUnmatch ? 'フィルタを解除して全件表示' : '行数が不一致のブロックのみを抽出表示'"
           >
-            <span>⚠️</span>
-            <span>不一致のみ</span>
+            <span>{{ filterOnlyUnmatch ? '🔄' : '⚠️' }}</span>
+            <span>{{ filterOnlyUnmatch ? '全件表示に戻す' : '不一致のみ' }}</span>
           </button>
         </div>
       </div>
@@ -180,6 +193,7 @@ const emit = defineEmits<{
   (e: 'add-block'): void;
   (e: 'pad-all'): void;
   (e: 'replace-all-pipes'): void;
+  (e: 'open-split-modal'): void;
   (e: 'copy-tsv'): void;
   (e: 'export-xlsx'): void;
   (e: 'open-importer'): void;
@@ -414,6 +428,16 @@ function handleSelectChange(e: Event) {
 
 .btn-pipe-all:hover {
   background: rgba(245, 158, 11, 0.15);
+}
+
+.btn-split-newline {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.btn-split-newline:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
 }
 
 .unmatch-alert-area {

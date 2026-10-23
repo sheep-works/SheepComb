@@ -16,6 +16,30 @@ export function formatBlockText(rawText: string): string {
   return lines.join('\n');
 }
 
+/**
+ * 指定文字の直後で改行を挿入して文分割を行う
+ * @param text 対象テキスト
+ * @param chars 分割対象の文字群（例: "。！？" や ".!?"）
+ * @param trimSpaces 直後の空白（半角スペース、全角スペース、タブ）を除去して改行するか
+ */
+export function splitTextAfterChars(
+  text: string,
+  chars: string,
+  trimSpaces: boolean = true
+): string {
+  if (!text || !chars) return text;
+
+  // 正規表現の特殊文字をエスケープ
+  const escapedChars = chars.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
+  if (!escapedChars) return text;
+
+  // 水平空白（半角スペース、全角スペース、タブ）
+  const spacePattern = trimSpaces ? '[ \\t　]*' : '';
+  const regex = new RegExp(`([${escapedChars}])${spacePattern}(?!\\r?\\n|$)`, 'g');
+
+  return text.replace(regex, '$1\n');
+}
+
 export async function parseXlsx(data: ArrayBuffer): Promise<SheetData[]> {
   const workbook = XLSX.read(data, { type: 'array' });
   const result: SheetData[] = [];
@@ -120,7 +144,7 @@ export function parseTsvOrText(raw: string): AlignBlock[] {
   return blocks;
 }
 
-export function exportToXlsx(sheetData: SheetData): Uint8Array {
+export function exportToXlsx(sheetData: SheetData): ArrayBuffer {
   const wb = XLSX.utils.book_new();
   const sheetName = sheetData.sheetName || 'ALIGN';
 
@@ -149,7 +173,51 @@ export function exportToXlsx(sheetData: SheetData): Uint8Array {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{ wch: 50 }, { wch: 50 }, { wch: 30 }];
   XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
-  return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+}
+
+export function exportAllSheetsToXlsx(sheets: SheetData[]): ArrayBuffer {
+  const wb = XLSX.utils.book_new();
+
+  for (const sheetData of sheets) {
+    const sheetName = sheetData.sheetName || 'ALIGN';
+    const rows: any[][] = [
+      ['原文', '訳文', '属性']
+    ];
+
+    for (const block of sheetData.blocks) {
+      const srcLines = block.sourceText ? block.sourceText.split('\n') : [''];
+      const tgtLines = block.targetText ? block.targetText.split('\n') : [''];
+      const maxLen = Math.max(srcLines.length, tgtLines.length);
+
+      const prop = sheetName && block.sectionName
+        ? `${sheetName}-${block.sectionName}`
+        : (block.sectionName || sheetName);
+
+      for (let i = 0; i < maxLen; i++) {
+        rows.push([
+          srcLines[i] !== undefined ? srcLines[i] : '',
+          tgtLines[i] !== undefined ? tgtLines[i] : '',
+          prop,
+        ]);
+      }
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 50 }, { wch: 50 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+  }
+
+  return XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+}
+
+/**
+ * TSVコピー用のフィールドエスケープ
+ * - 元テキストに含まれていたタブ文字 (\t) を '\\t' にエスケープし、列ズレを防止
+ */
+function escapeTsvField(val?: string): string {
+  if (!val) return '';
+  return val.replace(/\t/g, '\\t');
 }
 
 export function exportToPaddedTsv(blocks: AlignBlock[], sheetName: string = ''): string {
@@ -165,8 +233,8 @@ export function exportToPaddedTsv(blocks: AlignBlock[], sheetName: string = ''):
       : (block.sectionName || sheetName);
 
     for (let i = 0; i < maxLen; i++) {
-      const s = srcLines[i] !== undefined ? srcLines[i] : '';
-      const t = tgtLines[i] !== undefined ? tgtLines[i] : '';
+      const s = srcLines[i] !== undefined ? escapeTsvField(srcLines[i]) : '';
+      const t = tgtLines[i] !== undefined ? escapeTsvField(tgtLines[i]) : '';
       rows.push(`${s}\t${t}\t${prop}`);
     }
   }
