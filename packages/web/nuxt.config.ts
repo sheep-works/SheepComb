@@ -13,8 +13,7 @@ export default defineNuxtConfig({
       link: [
         { rel: 'canonical', href: 'https://lambuage.com/app' },
         { rel: 'manifest', href: '/app/manifest.webmanifest' },
-        { rel: 'icon', type: 'image/svg+xml', href: '/app/icon.svg' },
-        { rel: 'alternate icon', type: 'image/png', href: '/app/icon-192.png' },
+        { rel: 'icon', type: 'image/x-icon', href: '/app/favicon.ico' },
         { rel: 'apple-touch-icon', href: '/app/icon-192.png' }
       ],
       script: [
@@ -71,10 +70,9 @@ export default defineNuxtConfig({
           purpose: 'maskable'
         },
         {
-          src: '/app/icon.svg',
-          sizes: 'any',
-          type: 'image/svg+xml',
-          purpose: 'any'
+          src: '/app/tratoys.png',
+          sizes: '500x500',
+          type: 'image/png'
         }
       ]
     },
