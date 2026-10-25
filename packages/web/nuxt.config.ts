@@ -11,7 +11,11 @@ export default defineNuxtConfig({
     head: {
       title: 'SheepComb - 翻訳支援Webポータル',
       link: [
-        { rel: 'canonical', href: 'https://lambuage.com/app' }
+        { rel: 'canonical', href: 'https://lambuage.com/app' },
+        { rel: 'manifest', href: '/app/manifest.webmanifest' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/app/icon.svg' },
+        { rel: 'alternate icon', type: 'image/png', href: '/app/icon-192.png' },
+        { rel: 'apple-touch-icon', href: '/app/icon-192.png' }
       ],
       script: [
         {
@@ -32,8 +36,63 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@pinia-plugin-persistedstate/nuxt',
     '@nuxtjs/i18n',
-    '@nuxtjs/sitemap'
+    '@nuxtjs/sitemap',
+    '@vite-pwa/nuxt'
   ],
+
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      id: '/app/',
+      name: 'SheepComb - 翻訳支援Webポータル',
+      short_name: 'SheepComb',
+      description: '多言語ドキュメント抽出・翻訳支援・差分解析Webポータル',
+      theme_color: '#1e1e2e',
+      background_color: '#11111b',
+      display: 'standalone',
+      orientation: 'any',
+      scope: '/app/',
+      start_url: '/app/',
+      icons: [
+        {
+          src: '/app/icon-192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: '/app/icon-512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        },
+        {
+          src: '/app/icon-512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable'
+        },
+        {
+          src: '/app/icon.svg',
+          sizes: 'any',
+          type: 'image/svg+xml',
+          purpose: 'any'
+        }
+      ]
+    },
+    workbox: {
+      navigateFallback: '/app/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico,wasm}'],
+      // WASM 等の大きなファイルを確実にオフラインキャッシュできるように上限を緩和 (5MB)
+      maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
+    },
+    client: {
+      installPrompt: true
+    },
+    devOptions: {
+      // 開発中は Service Worker を無効にして開発時のホットリロードやキャッシュ競合を防ぐ
+      enabled: false,
+      type: 'module'
+    }
+  },
 
   site: {
     url: 'https://lambuage.com'
@@ -101,5 +160,3 @@ export default defineNuxtConfig({
   },
   // Nuxt 3 uses file-based routing, so we don't need explicit router config here
 })
-
-
