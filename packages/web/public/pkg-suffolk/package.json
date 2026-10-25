@@ -1,0 +1,18 @@
+{
+  "name": "suffolk-wasm",
+  "type": "module",
+  "collaborators": [
+    "SheepFamily"
+  ],
+  "version": "0.0.2",
+  "files": [
+    "suffolk_wasm_bg.wasm",
+    "suffolk_wasm.js",
+    "suffolk_wasm.d.ts"
+  ],
+  "main": "suffolk_wasm.js",
+  "types": "suffolk_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

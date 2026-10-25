@@ -2,3 +2,7 @@
 	path = modules/SheepShuttle
 	url = https://github.com/sheep-works/SheepShuttle.git
 	branch = main
+[submodule "modules/Suffolk"]
+	path = modules/Suffolk
+	url = https://github.com/sheep-works/Suffolk.git
+	branch = main

@@ -15,6 +15,7 @@ import { FileUp, Search, Download, Database, Trash2, Loader2, ChevronLeft, Chevr
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useShuttleStore } from '../../stores/shuttleStore'
+import { useGroomStore } from '../../stores/groomStore'
 import { SheepShuttle } from '@sheep-family/core'
 import { FileIO } from '../../utils/fileIO'
 import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
@@ -22,6 +23,31 @@ import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
 
 // ストアおよびコンポーネントの状態管理
 const store = useShuttleStore()
+const groomStore = useGroomStore()
+
+const hasGroomData = computed(() => {
+  return groomStore.currentBlocks.length > 0 || (groomStore.sheets && groomStore.sheets.some(s => s.blocks && s.blocks.length > 0))
+})
+
+const groomBlockCount = computed(() => {
+  if (groomStore.sheets && groomStore.sheets.length > 0) {
+    const total = groomStore.sheets.reduce((acc, s) => acc + (s.blocks ? s.blocks.length : 0), 0)
+    if (total > 0) return total
+  }
+  return groomStore.currentBlocks.length
+})
+
+function importFromGroom() {
+  if (!hasGroomData.value) {
+    store.setStatus('Groom に取り込めるデータがありません', 'error')
+    return
+  }
+  selectedFiles.value = []
+  store.importFromGroom(groomStore.sheets)
+  currentPage.value = 1
+  store.setStatus(`🐑 Groom から ${store.unitCount} 件のセグメントを取り込みました`, 'success')
+  isActionsOpen.value = true
+}
 const fileInput = ref<HTMLInputElement | null>(null)
 const isProcessing = computed(() => store.isLoading || store.isProgressing)
 const statusMsg = computed(() => {
@@ -338,6 +364,16 @@ function applyDirectInput() {
             <button class="btn-direct-input" @click="openDirectInputModal" type="button">
               <FileEdit :size="15" />
               <span>テキスト直接入力 (ペースト)</span>
+            </button>
+            <button
+              v-if="hasGroomData"
+              class="btn-groom-import"
+              @click="importFromGroom"
+              type="button"
+              title="SheepGroom で編集中の対訳データを取り込みます"
+            >
+              <span>🐑</span>
+              <span>Groom の対訳を取り込む ({{ groomBlockCount }}件)</span>
             </button>
           </div>
           <div class="file-list" v-if="selectedFiles.length > 0">
@@ -1049,6 +1085,29 @@ td.note {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-glow);
+}
+
+.btn-groom-import {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-xs);
+  color: #10b981;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-groom-import:hover {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: #10b981;
 }
 
 /* Modal Styles */

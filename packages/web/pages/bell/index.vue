@@ -117,6 +117,14 @@
                   <span>📋</span>
                   <span>標準 JSON</span>
                 </button>
+                <div class="dropdown-divider"></div>
+                <button 
+                  @click="sendToShuttle(); showExportMenu = false"
+                  class="dropdown-item"
+                >
+                  <span>⚙️</span>
+                  <span>Shuttle 管理へ転送 (ShWvData)</span>
+                </button>
               </div>
             </div>
 
@@ -369,12 +377,26 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import type { LqaIssueReview } from '~/types/bell';
 import { useBellIssueManager } from '~/composables/useBellIssueManager';
+import { useShuttleStore } from '~/stores/shuttleStore';
 import MediaImage from '~/components/bell/MediaImage.vue';
 import MediaVideo from '~/components/bell/MediaVideo.vue';
 
 definePageMeta({
   title: 'LQA支援',
 });
+
+const shuttleStore = useShuttleStore();
+const router = useRouter();
+
+function sendToShuttle() {
+  if (issues.value.length === 0) {
+    showToast('転送する Issue がありません', 'warning');
+    return;
+  }
+  shuttleStore.loadBellAsShwv(issues.value as any, folderName.value || 'lqa_issues.json');
+  showToast('⚙️ Shuttle 管理画面へ転送しました (MediaMetadata埋込済)', 'success');
+  router.push('/shuttle/manage');
+}
 
 const {
   issues,
@@ -657,6 +679,12 @@ onUnmounted(() => {
   z-index: 50;
   display: flex;
   flex-direction: column;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 
 .dropdown-item {

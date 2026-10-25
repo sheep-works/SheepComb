@@ -8,6 +8,8 @@ import { ref, computed, watch } from 'vue'
 import { SheepShuttle } from '@sheep-family/core'
 import type {
   TranslationPair,
+  GroomSheetData,
+  BellLqaIssueReview,
   TranslationPairWithFile,
   ShWvData,
   ShWvUnit,
@@ -201,7 +203,9 @@ export const useShuttleStore = defineStore('shuttle', () => {
    * 既存の ShWvData をセット（ファイル読み込み時など）
    */
   async function loadShwvData(newData: ShWvData, name: string = '') {
-    shuttle.setNewData(newData)
+    // Vue の Proxy や WASM 内部オブジェクト等による structuredClone の DataCloneError を防止
+    const plainData = JSON.parse(JSON.stringify(newData))
+    shuttle.setNewData(plainData)
     syncState()
     currentFileName.value = name
   }
@@ -227,6 +231,62 @@ export const useShuttleStore = defineStore('shuttle', () => {
    */
   function process(options?: ProcessorOptions) { shuttle.process(options); syncState() }
   function sampling(sampledTotal: number, seed?: number) { const res = shuttle.sampling(sampledTotal, seed); syncState(); return res }
+  /**
+   * Groom の対訳データをパース済みユニットとしてインポート
+   */
+  function importFromGroom(sheets: GroomSheetData[]) {
+    shuttle.loadFromGroom(sheets)
+    syncState()
+    currentFileName.value = sheets.length === 1 ? (sheets[0]?.sheetName || 'Groom') : `${sheets.length} sheets (Groom)`
+  }
+
+  /**
+   * Groom の対訳データを直接 ShWvData としてロード
+   */
+  function loadGroomAsShwv(sheets: GroomSheetData[], projectInfo?: ProjectInfo) {
+    const res = shuttle.loadGroomAsShwv(sheets, projectInfo)
+    syncState()
+    currentFileName.value = sheets.length === 1 ? `${sheets[0]?.sheetName || 'Groom'}.json` : 'Groom_aligned.json'
+    return res
+  }
+
+  /**
+   * Bell の LQA Issue データを直接 ShWvData としてロード
+   */
+  function loadBellAsShwv(issues: BellLqaIssueReview[], folderName?: string, projectInfo?: ProjectInfo) {
+    const res = shuttle.loadBellAsShwv(issues, folderName, projectInfo)
+    syncState()
+    currentFileName.value = folderName ? `${folderName}.json` : 'lqa_issues.json'
+    return res
+  }
+
+  /**
+   * ShWvData の全ユニットの pre と tgt を入れ替え
+   */
+  function swapPreTgt(): number {
+    const count = shuttle.swapPreAndTgt()
+    syncState()
+    return count
+  }
+
+  /**
+   * ShWvData の全ユニットの pre または tgt をクリア
+   */
+  function clearField(field: 'pre' | 'tgt'): number {
+    const count = shuttle.clearField(field)
+    syncState()
+    return count
+  }
+
+  /**
+   * ShWvData の全ユニットの指定フィールドの値をコピー
+   */
+  function copyField(from: 'pre' | 'tgt', to: 'pre' | 'tgt', overwrite: boolean = true): number {
+    const count = shuttle.copyField(from, to, overwrite)
+    syncState()
+    return count
+  }
+
   function convert(projectInfo?: ProjectInfo) { shuttle.convert(projectInfo); syncState() }
   async function analyze(wasmAnalyzeAll?: any) {
     await shuttle.analyze(wasmAnalyzeAll)
@@ -501,6 +561,12 @@ export const useShuttleStore = defineStore('shuttle', () => {
     importSearchData,
     updateTargets,
     applyTerms,
+    importFromGroom,
+    loadGroomAsShwv,
+    loadBellAsShwv,
+    swapPreTgt,
+    clearField,
+    copyField,
     // インスタンスへの直接アクセスが必要な場合用
     shuttle
   }

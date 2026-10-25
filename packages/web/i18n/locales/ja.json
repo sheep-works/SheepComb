@@ -32,6 +32,8 @@
   "header": {
     "nav": {
       "shuttle": "SheepShuttle",
+      "suffolk": "Suffolk",
+      "suffolk_desc": "XLIFF作成・復元",
       "tools": "ツール",
       "manual": "マニュアル",
       "parser": "パース",
@@ -54,7 +56,9 @@
       "check_percentage_desc": "確率の合計が100%になるか検証",
       "play": "遊ぶ",
       "edit_distance": "編集距離",
-      "edit_distance_desc": "レーベンシュタイン距離の可視化"
+      "edit_distance_desc": "レーベンシュタイン距離の可視化",
+      "chunk": "テキスト分割",
+      "chunk_desc": "長文テキストを指定サイズで分割"
     }
   },
   "index": {
@@ -70,7 +74,8 @@
     "api_desc": "LLMリクエストとキャッシュ設定",
     "batch_desc": "左右のテキストを高速に一括比較",
     "concordance_desc": "FlexSearchによる高速な一致検索",
-    "edit_distance_desc": "2つの文字列間の編集距離と変換ステップを可視化"
+    "edit_distance_desc": "2つの文字列間の編集距離と変換ステップを可視化",
+    "chunk_desc": "長文テキストを指定文字数・トークン単位で分割"
   },
   "shuttle": {
     "constructor": {

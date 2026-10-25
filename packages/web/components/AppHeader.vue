@@ -37,6 +37,9 @@ const currentSubtitle = computed(() => {
   if (path.startsWith('/bell')) {
     return pageTitle ? `SheepBell - ${pageTitle}` : 'SheepBell'
   }
+  if (path.startsWith('/suffolk')) {
+    return 'Suffolk - XLIFF作成・復元'
+  }
   if (path.startsWith('/tools')) {
     return pageTitle ? `Tools - ${pageTitle}` : 'Tools'
   }
@@ -145,6 +148,15 @@ const handleLocaleChange = (event: Event) => {
           <NuxtLink to="/bell" class="nav-group-trigger nav-link-btn" :class="{ active: route.path.startsWith('/bell') }">
             <BellIcon :size="16" />
             <span>SheepBell</span>
+          </NuxtLink>
+        </div>
+
+        <!-- 3.5 Suffolk (Direct link with EXP badge) -->
+        <div class="nav-item">
+          <NuxtLink to="/suffolk" class="nav-group-trigger nav-link-btn" :class="{ active: route.path.startsWith('/suffolk') }">
+            <Sparkles :size="16" />
+            <span>Suffolk</span>
+            <span class="nav-exp-badge">EXP</span>
           </NuxtLink>
         </div>
 
@@ -483,6 +495,18 @@ const handleLocaleChange = (event: Event) => {
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: var(--bg-card);
+}
+
+.nav-exp-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 .wasm-badge.ready {

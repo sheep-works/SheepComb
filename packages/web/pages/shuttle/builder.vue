@@ -239,7 +239,7 @@ const doBuild = async () => {
       } else if (file.matchedIndex >= 0) {
         const fileInfo = shwvData.value.meta.files[file.matchedIndex]
         if (fileInfo) {
-          fileUnits = shwvData.value.body.units.slice(fileInfo.start, fileInfo.end + 1)
+          fileUnits = shwvData.value.body.units.filter(u => u.idx >= fileInfo.start && u.idx <= fileInfo.end)
         }
       }
 

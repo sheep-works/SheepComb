@@ -60,6 +60,37 @@
                   <span class="item-desc">Excelに直接貼り付け可能</span>
                 </div>
               </button>
+              <div class="menu-divider"></div>
+              <button 
+                @click="$emit('send-to-shuttle', 'parser')"
+                class="save-menu-item"
+              >
+                <span>🚀</span>
+                <div class="item-texts">
+                  <span class="item-title">Shuttle パースへ転送</span>
+                  <span class="item-desc">生ユニットとして取り込み</span>
+                </div>
+              </button>
+              <button 
+                @click="$emit('send-to-shuttle', 'analyzer')"
+                class="save-menu-item"
+              >
+                <span>⚡</span>
+                <div class="item-texts">
+                  <span class="item-title">Shuttle 解析へ転送</span>
+                  <span class="item-desc">ShWvData化して解析画面へ</span>
+                </div>
+              </button>
+              <button 
+                @click="$emit('send-to-shuttle', 'manage')"
+                class="save-menu-item"
+              >
+                <span>⚙️</span>
+                <div class="item-texts">
+                  <span class="item-title">Shuttle 管理へ転送</span>
+                  <span class="item-desc">ShWvDataとして直接管理へ</span>
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -195,6 +226,7 @@ const emit = defineEmits<{
   (e: 'replace-all-pipes'): void;
   (e: 'open-split-modal'): void;
   (e: 'copy-tsv'): void;
+  (e: 'send-to-shuttle', target: 'parser' | 'analyzer' | 'manage'): void;
   (e: 'export-xlsx'): void;
   (e: 'open-importer'): void;
 }>();
@@ -305,6 +337,12 @@ function handleSelectChange(e: Event) {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 
 .save-menu-item {

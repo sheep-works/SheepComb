@@ -15,6 +15,7 @@ import { initWasm, getWasm } from '~/utils/wasm'
 import { FileIO } from '../../utils/fileIO'
 import { useI18n } from 'vue-i18n'
 import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
+import type { ShWvData } from '@sheep-family/types'
 
 const store = useShuttleStore()
 const router = useRouter()
@@ -30,6 +31,7 @@ const isActionOpen = ref(true)
 
 // ファイル状態
 const targetFiles = ref<File[]>([])
+const shwvTargetData = ref<ShWvData | null>(null)
 const tmFiles = ref<File[]>([])
 const tbFiles = ref<File[]>([])
 
@@ -98,11 +100,37 @@ function filterValidFiles(files: File[], validExts: string[], typeName: string):
 }
 
 // ファイル管理
-function addTargetFiles(files: File[]) {
+async function addTargetFiles(files: File[]) {
   const filtered = filterValidFiles(files, validTargetExts, '翻訳対象')
   if (filtered.length > 0) {
     targetFiles.value = [...targetFiles.value, ...filtered]
     isTmTbOpen.value = true // 対象が入ったらTM/TBセクションを開く
+
+    // 単一 JSON かつ ShWvData (define.name === 'SHWV_DATA') の場合はメタ情報を事前検知
+    if (targetFiles.value.length === 1 && targetFiles.value[0]?.name.toLowerCase().endsWith('.json')) {
+      try {
+        const text = await targetFiles.value[0].text()
+        const parsed = JSON.parse(text)
+        if (parsed?.define?.name === 'SHWV_DATA') {
+          shwvTargetData.value = parsed
+          if (parsed.meta?.sourceLang) sourceLang.value = parsed.meta.sourceLang
+          if (parsed.meta?.targetLang) targetLang.value = parsed.meta.targetLang
+          if (parsed.projectInfo?.projectName || parsed.meta?.project) {
+            projectName.value = parsed.projectInfo?.projectName || parsed.meta?.project
+          }
+          statusMsg.value = {
+            text: `ShWvData を検出しました: ${parsed.body?.units?.length ?? 0} セグメント (元ファイル情報・メタデータを完全保持して解析します)`,
+            type: 'info'
+          }
+        } else {
+          shwvTargetData.value = null
+        }
+      } catch {
+        shwvTargetData.value = null
+      }
+    } else {
+      shwvTargetData.value = null
+    }
   }
 }
 function addTmFiles(files: File[]) {
@@ -114,23 +142,36 @@ function addTbFiles(files: File[]) {
   if (filtered.length > 0) tbFiles.value = [...tbFiles.value, ...filtered]
 }
 
-function removeTargetFile(index: number) { targetFiles.value.splice(index, 1) }
+function removeTargetFile(index: number) {
+  targetFiles.value.splice(index, 1)
+  if (targetFiles.value.length === 0) {
+    shwvTargetData.value = null
+  }
+}
 function removeTm(index: number) { tmFiles.value.splice(index, 1) }
 function removeTb(index: number) { tbFiles.value.splice(index, 1) }
 
-// 解析・構造化の実行
-async function doAnalyzeAndStructure() {
+// 解析・構造化の実行 (skipAnalysis=true の場合はTM/TB解析・内部類似度計算をスキップ)
+async function doAnalyzeAndStructure(skipAnalysis = false) {
   if (!canRun.value) return
   isProcessing.value = true
-  statusMsg.value = { text: '解析および構造化を実行中...', type: 'info' }
+  statusMsg.value = { text: skipAnalysis ? '構造化を実行中（解析スキップ）...' : '解析および構造化を実行中...', type: 'info' }
 
   try {
-    const wasmReady = await initWasm()
-    if (!wasmReady) throw new Error('WASMの初期化に失敗しました')
-    const wasm = getWasm()
+    let wasm: any = null
+    if (!skipAnalysis) {
+      const wasmReady = await initWasm()
+      if (!wasmReady) throw new Error('WASMの初期化に失敗しました')
+      wasm = getWasm()
+    }
 
     // 1. 翻訳対象の確定
-    if (hasTargetFiles.value) {
+    let isShwvMode = false
+    if (shwvTargetData.value) {
+      statusMsg.value = { text: 'ShWvData をロード中...', type: 'info' }
+      await store.loadShwvData(shwvTargetData.value, targetFiles.value[0]?.name || 'project.json')
+      isShwvMode = true
+    } else if (hasTargetFiles.value) {
       statusMsg.value = { text: 'ファイルをパース中...', type: 'info' }
       const filesPayload = await Promise.all(targetFiles.value.map(async f => {
         const ext = f.name.split('.').pop()?.toLowerCase() || ''
@@ -140,6 +181,9 @@ async function doAnalyzeAndStructure() {
         return { name: f.name, content: content as any }
       }))
       await store.parseFiles(filesPayload)
+    } else if (hasDataInStore.value) {
+      // 対象ファイル未指定で既存の ShWvData を利用する場合
+      isShwvMode = true
     }
 
     if (!store.hasUnits && !store.hasData) {
@@ -147,26 +191,36 @@ async function doAnalyzeAndStructure() {
     }
 
     // 2. 構造化（タグ保護・骨格作成）
-    statusMsg.value = { text: 'タグ保護と構造化を実行中...', type: 'info' }
-    const projectInfo = {
-      version: 2,
-      projectName: projectName.value || 'SheepWeaveProject',
-      sourceLanguage: sourceLang.value || 'en-US',
-      targetLanguage: targetLang.value || 'ja-JP',
-      sourceFiles: targetFiles.value.length > 0 ? targetFiles.value.map(f => f.name) : store.fileList.map(f => f.name),
-      okapi: [
-        {
-          filter: "auto",
-          files: (targetFiles.value.length > 0 ? targetFiles.value.map(f => f.name) : store.fileList.map(f => f.name)).map(name => ({
-            source: `Data/${name}`,
-            xliff: `Working/03_XLF_JSON/${name}`,
-            status: "extracted" as const
-          }))
-        }
-      ]
+    // ShWvData (既存データ) の場合は、meta.files / bilingualPath / workflow などの
+    // メタ情報を完全保持するため store.convert() をスキップする
+    if (!isShwvMode) {
+      statusMsg.value = { text: 'タグ保護と構造化を実行中...', type: 'info' }
+      const projectInfo = {
+        version: 2,
+        projectName: projectName.value || 'SheepWeaveProject',
+        sourceLanguage: sourceLang.value || 'en-US',
+        targetLanguage: targetLang.value || 'ja-JP',
+        sourceFiles: targetFiles.value.length > 0 ? targetFiles.value.map(f => f.name) : store.fileList.map(f => f.name),
+        okapi: [
+          {
+            filter: "auto",
+            files: (targetFiles.value.length > 0 ? targetFiles.value.map(f => f.name) : store.fileList.map(f => f.name)).map(name => ({
+              source: `Data/${name}`,
+              xliff: `Working/03_XLF_JSON/${name}`,
+              status: "extracted" as const
+            }))
+          }
+        ]
+      }
+
+      store.convert(projectInfo)
     }
 
-    store.convert(projectInfo)
+    // 解析スキップモードの場合はここで完了
+    if (skipAnalysis) {
+      statusMsg.value = { text: `⚡ 構造化が完了しました（解析スキップ: ${store.shwvUnitCount} セグメント）`, type: 'success' }
+      return
+    }
 
     // 3. TM 読み込み
     if (hasTm.value) {
@@ -223,7 +277,11 @@ function downloadShwv() {
         
         <!-- 1. 翻訳対象ファイル -->
         <AppCardCollapse title="1. 翻訳対象ファイル" v-model:open="isTargetOpen" class="sidebar-card">
-          <div v-if="hasUnitsInStore && !hasTargetFiles" class="store-notice">
+          <div v-if="hasDataInStore && !hasTargetFiles" class="store-notice">
+            <CheckCircle :size="14" class="notice-icon" />
+            <span>ロード済み ShWvData ({{ store.shwvUnitCount }} セグメント) を利用中</span>
+          </div>
+          <div v-else-if="hasUnitsInStore && !hasTargetFiles" class="store-notice">
             <CheckCircle :size="14" class="notice-icon" />
             <span>パース済みデータ ({{ store.unitCount }} 件) を利用中</span>
           </div>
@@ -240,6 +298,7 @@ function downloadShwv() {
           <div class="file-mini-list" v-if="hasTargetFiles">
             <div v-for="(f, i) in targetFiles" :key="i" class="mini-item">
               <span class="mini-name">{{ f.name }}</span>
+              <span v-if="shwvTargetData" class="badge-shwv" style="font-size: 10px; background: rgba(59, 130, 246, 0.15); color: #3b82f6; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 600;">ShWvData</span>
               <button @click="removeTargetFile(i)" class="btn-remove"><Trash2 :size="12" /></button>
             </div>
           </div>
@@ -307,11 +366,22 @@ function downloadShwv() {
             </div>
           </div>
 
-          <button class="btn-run" @click="doAnalyzeAndStructure" :disabled="isProcessing || !canRun">
-            <span v-if="isProcessing" class="loader"></span>
-            <Play v-else :size="16" />
-            <span>{{ isProcessing ? '解析中...' : '解析・構造化を実行' }}</span>
-          </button>
+          <div class="action-buttons-group">
+            <button class="btn-run" @click="() => doAnalyzeAndStructure(false)" :disabled="isProcessing || !canRun">
+              <span v-if="isProcessing" class="loader"></span>
+              <Play v-else :size="16" />
+              <span>{{ isProcessing ? '解析中...' : '解析・構造化を実行' }}</span>
+            </button>
+            <button 
+              class="btn-skip-analysis" 
+              @click="() => doAnalyzeAndStructure(true)" 
+              :disabled="isProcessing || !canRun"
+              title="TM/TB照合や内部類似度解析をスキップし、タグ保護と構造化 (ShWvData化) のみ即座に実行します"
+            >
+              <span>⏩</span>
+              <span>構造化のみ実行（解析スキップ）</span>
+            </button>
+          </div>
         </AppCardCollapse>
 
         <div v-if="statusMsg.text" :class="['status-box', statusMsg.type]">
@@ -401,6 +471,12 @@ function downloadShwv() {
             </table>
           </div>
 
+          <div class="empty-state" v-else-if="store.hasData">
+            <CheckCircle :size="48" class="empty-icon success-icon" />
+            <h3>構造化データ（ShWvData）が準備完了しています</h3>
+            <p>解析はスキップされました（TM/TB照合・類似度統計なし）。</p>
+            <p>上部の「管理へ進む」からセグメント一覧の確認や編集・エクスポートを行えます。</p>
+          </div>
           <div class="empty-state" v-else>
             <Search :size="48" class="empty-icon" />
             <p>左パネルから翻訳対象ファイル・参照データを設定し、「解析・構造化を実行」してください。</p>
@@ -621,6 +697,44 @@ function downloadShwv() {
 .btn-run:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.action-buttons-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-skip-analysis {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px dashed var(--border);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-skip-analysis:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.btn-skip-analysis:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty-icon.success-icon {
+  color: #10b981;
 }
 
 .status-box {

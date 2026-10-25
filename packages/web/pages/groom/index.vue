@@ -9,6 +9,7 @@
       @start-align="handleStartAlign"
       @resume-align="currentView = 'editor'"
       @open-importer="showImporter = true"
+        @send-to-shuttle="handleSendToShuttle"
       @show-toast="showToast"
     />
 
@@ -121,6 +122,7 @@
 import { ref, computed, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useGroomStore } from '~/stores/groomStore';
+import { useShuttleStore } from '~/stores/shuttleStore';
 import type { SheetData, AlignBlock } from '~/types/groom';
 import { parseXlsx, parseTsvOrText, exportToXlsx, exportAllSheetsToXlsx, exportToPaddedTsv, splitTextAfterChars } from '~/utils/groomParser';
 import { extractFromFile, pairExtractedItems } from '~/utils/officeExtractor';
@@ -135,6 +137,30 @@ definePageMeta({
 });
 
 const groomStore = useGroomStore();
+const shuttleStore = useShuttleStore();
+const router = useRouter();
+
+function handleSendToShuttle(target: 'parser' | 'analyzer' | 'manage') {
+  if (sheets.value.length === 0 || currentBlocks.value.length === 0) {
+    showToast('⚠️ 転送可能なブロックがありません');
+    return;
+  }
+
+  if (target === 'parser') {
+    shuttleStore.importFromGroom(sheets.value);
+    showToast('🚀 Shuttle パース画面へ転送しました');
+    router.push('/shuttle/parser');
+  } else if (target === 'analyzer') {
+    shuttleStore.loadGroomAsShwv(sheets.value);
+    showToast('⚡ Shuttle 解析画面へ転送しました');
+    router.push('/shuttle/analyzer');
+  } else if (target === 'manage') {
+    shuttleStore.loadGroomAsShwv(sheets.value);
+    showToast('⚙️ Shuttle 管理画面へ転送しました');
+    router.push('/shuttle/manage');
+  }
+}
+
 const {
   currentView,
   sheets,

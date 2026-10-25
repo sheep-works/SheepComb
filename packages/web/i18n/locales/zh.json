@@ -32,6 +32,8 @@
   "header": {
     "nav": {
       "shuttle": "Shuttle",
+      "suffolk": "Suffolk",
+      "suffolk_desc": "XLIFF 提取与合并",
       "tools": "Tools",
       "manual": "手册",
       "parser": "解析器",
@@ -54,7 +56,9 @@
       "check_percentage_desc": "验证概率之和是否为 100%",
       "play": "探索与实践",
       "edit_distance": "编辑距离",
-      "edit_distance_desc": "莱文斯坦距离可视化"
+      "edit_distance_desc": "莱文斯坦距离可视化",
+      "chunk": "文本分割",
+      "chunk_desc": "按长度或Token分割长文本"
     }
   },
   "index": {
@@ -70,7 +74,8 @@
     "api_desc": "LLM请求与缓存设置",
     "batch_desc": "左右文本的快速批量比较",
     "concordance_desc": "基于FlexSearch的高速一致性搜索",
-    "edit_distance_desc": "可视化两个字符串之间的编辑距离与转换步骤"
+    "edit_distance_desc": "可视化两个字符串之间的编辑距离与转换步骤",
+    "chunk_desc": "按字符数或Token将长文本分割为块"
   },
   "shuttle": {
     "constructor": {

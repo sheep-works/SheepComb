@@ -8,7 +8,7 @@ definePageMeta({
   icon: 'settings',
 })
 import { ref, computed } from 'vue'
-import { FileUp, Download, Scissors, Merge, FileText, FileJson, Trash2, Settings2, ShieldCheck, AlertTriangle, CheckCircle2, Filter, Sparkles } from 'lucide-vue-next'
+import { FileUp, Download, Scissors, Merge, FileText, FileJson, Trash2, Settings2, ShieldCheck, AlertTriangle, CheckCircle2, Filter, Sparkles, ArrowLeftRight, Copy } from 'lucide-vue-next'
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { FileIO } from '../../utils/fileIO'
 import { restorePlaceholders } from '@sheep-family/core'
@@ -31,8 +31,11 @@ const activeTab = ref<'viewer' | 'qa'>('viewer')
 
 // 折り畳み状態
 const isUploadOpen = ref(true)
+const isEditOpen = ref(false)
+const isTbOpen = ref(false)
 const isQaOpen = ref(false)
-const isOpsOpen = ref(false)
+const isSplitOpen = ref(false)
+const isExportOpen = ref(false)
 
 // QA 状態
 const qaConfig = ref<QaConfig>({
@@ -75,8 +78,8 @@ async function loadFile(file: File) {
     // 新しいデータを読み込んだら QA 結果をリセット & セクションを展開
     qaIssues.value = []
     hasRunQa.value = false
-    isQaOpen.value = true
-    isOpsOpen.value = true
+    isEditOpen.value = true
+    isExportOpen.value = true
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     store.setStatus(t('shuttle.manage.msg_error', { msg }), 'error')
@@ -223,6 +226,31 @@ async function doUpdateFromJsonl(e: Event) {
   }
 }
 
+// --- pre / tgt 一括操作 ---
+function handleSwapPreTgt() {
+  if (!store.hasData) return
+  if (!confirm('全ユニットの pre (機械翻訳/下訳) と tgt (訳文) を入れ替えますか？')) return
+  const count = store.swapPreTgt()
+  store.setStatus(`⇄ ${count} 件のユニットで pre と tgt を入れ替えました`, 'success')
+}
+
+function handleClearField(field: 'pre' | 'tgt') {
+  if (!store.hasData) return
+  const label = field === 'pre' ? 'pre (機械翻訳/下訳)' : 'tgt (訳文)'
+  if (!confirm(`全ユニットの ${label} をクリア（空文字に）しますか？この操作は元に戻せません。`)) return
+  const count = store.clearField(field)
+  store.setStatus(`🗑️ ${count} 件のユニットで ${label} をクリアしました`, 'success')
+}
+
+function handleCopyField(from: 'pre' | 'tgt', to: 'pre' | 'tgt') {
+  if (!store.hasData) return
+  const fromLabel = from === 'pre' ? 'pre (機械翻訳/下訳)' : 'tgt (訳文)'
+  const toLabel = to === 'pre' ? 'pre (機械翻訳/下訳)' : 'tgt (訳文)'
+  if (!confirm(`全ユニットで ${fromLabel} の内容を ${toLabel} に上書きコピーしますか？`)) return
+  const count = store.copyField(from, to, true)
+  store.setStatus(`📋 ${count} 件のユニットで ${fromLabel} を ${toLabel} にコピーしました`, 'success')
+}
+
 // --- 用語 (TB) 一括置換処理 ---
 const termMatchWholeWord = ref(true)
 
@@ -245,8 +273,11 @@ function doClear() {
   qaIssues.value = []
   hasRunQa.value = false
   isUploadOpen.value = true
+  isEditOpen.value = false
+  isTbOpen.value = false
   isQaOpen.value = false
-  isOpsOpen.value = false
+  isSplitOpen.value = false
+  isExportOpen.value = false
   store.setStatus(t('shuttle.manage.msg_cleared'), 'info')
 }
 </script>
@@ -256,7 +287,7 @@ function doClear() {
     <div class="shuttle-layout">
       <!-- Sidebar: Actions -->
       <aside class="sidebar">
-        <!-- Loader Card -->
+        <!-- 1. ShWvData 読み込み Card -->
         <AppCardCollapse v-model:open="isUploadOpen" :title="$t('shuttle.manage.title_load', 'ShWvData 読み込み')">
           <template #header>
             <div class="card-title-group">
@@ -284,7 +315,74 @@ function doClear() {
           </div>
         </AppCardCollapse>
 
-        <!-- QA Card -->
+        <!-- 2. セグメント一括編集 (pre / tgt) Card -->
+        <AppCardCollapse v-model:open="isEditOpen" title="セグメント一括編集 (pre/tgt)">
+          <template #header>
+            <div class="card-title-group">
+              <ArrowLeftRight :size="16" class="header-icon" style="color: #10b981;" />
+              <h2 class="card-title">セグメント一括編集</h2>
+            </div>
+          </template>
+          <template #actions>
+            <span v-if="hasData" class="badge-mini badge-pass">
+              {{ store.shwvUnitCount }}
+            </span>
+          </template>
+
+          <div class="action-list">
+            <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+              pre (機械翻訳/下訳) 列と tgt (訳文) 列の一括操作を行います。
+            </div>
+            <div class="action-grid" style="grid-template-columns: 1fr; gap: 6px;">
+              <button class="action-btn" @click="handleSwapPreTgt" :disabled="!hasData" title="pre と tgt のテキストを相互に入れ替えます">
+                <ArrowLeftRight :size="15" /> pre と tgt を入れ替え (Swap)
+              </button>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                <button class="action-btn" @click="handleClearField('pre')" :disabled="!hasData" title="全ユニットの pre を空にします">
+                  <Trash2 :size="15" /> pre をクリア
+                </button>
+                <button class="action-btn" @click="handleClearField('tgt')" :disabled="!hasData" title="全ユニットの tgt を空にします">
+                  <Trash2 :size="15" /> tgt をクリア
+                </button>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                <button class="action-btn" @click="handleCopyField('pre', 'tgt')" :disabled="!hasData" title="pre のテキストを tgt に上書きコピーします">
+                  <Copy :size="15" /> pre → tgt コピー
+                </button>
+                <button class="action-btn" @click="handleCopyField('tgt', 'pre')" :disabled="!hasData" title="tgt のテキストを pre に上書きコピーします">
+                  <Copy :size="15" /> tgt → pre コピー
+                </button>
+              </div>
+            </div>
+          </div>
+        </AppCardCollapse>
+
+        <!-- 3. 用語 (TB) 一括反映 Card -->
+        <AppCardCollapse v-model:open="isTbOpen" title="用語 (TB) 一括反映">
+          <template #header>
+            <div class="card-title-group">
+              <Sparkles :size="16" class="header-icon" style="color: #60a5fa;" />
+              <h2 class="card-title">用語 (TB) 一括反映</h2>
+            </div>
+          </template>
+
+          <div class="action-list">
+            <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+              漢字衝突を防ぐ2段階マーカー置換でTB用語を一括反映します（tgt → pre → src の順でテキストを取得し、tgt に格納）。
+            </div>
+            <div>
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.78rem; color: var(--text-secondary);">
+                <input type="checkbox" v-model="termMatchWholeWord" style="accent-color: var(--accent);" />
+                <span>単語境界を考慮 (英単語の部分一致防止)</span>
+              </label>
+            </div>
+            <button class="action-btn" @click="doApplyTerms" :disabled="!hasData" style="width: 100%; justify-content: center; background: rgba(59, 130, 246, 0.12); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">
+              <Sparkles :size="16" /> TB用語を一括反映
+            </button>
+          </div>
+        </AppCardCollapse>
+
+        <!-- 4. QA (品質チェック) Card -->
         <AppCardCollapse v-model:open="isQaOpen" :title="'QA (品質チェック)'">
           <template #header>
             <div class="card-title-group">
@@ -332,45 +430,16 @@ function doClear() {
           </div>
         </AppCardCollapse>
 
-        <!-- Action Card -->
-        <AppCardCollapse v-model:open="isOpsOpen" :title="$t('shuttle.manage.title_operations', 'データ操作・変換')">
+        <!-- 5. 分割 & JSONL連携 Card -->
+        <AppCardCollapse v-model:open="isSplitOpen" title="分割 & JSONL連携">
           <template #header>
             <div class="card-title-group">
-              <Settings2 :size="16" class="header-icon" />
-              <h2 class="card-title">{{ $t('shuttle.manage.title_operations', 'データ操作・変換') }}</h2>
+              <Scissors :size="16" class="header-icon" />
+              <h2 class="card-title">分割 & JSONL連携</h2>
             </div>
-          </template>
-          <template #actions>
-            <ManualLink
-              href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-5-%E3%83%86%E3%82%99%E3%83%BC%E3%82%BF%E3%81%AE%E5%88%86%E5%89%B2%E3%81%A8%E7%AE%A1%E7%90%86-%E7%AE%A1%E7%90%86%E3%83%98%E3%82%9A%E3%83%BC%E3%82%B7%E3%82%99"
-              :label="$t('manual.steps.manage', 'マニュアル')"
-              compact
-              @click.stop
-            />
           </template>
 
           <div class="action-list">
-            <div class="action-group">
-              <h3 class="group-title">{{ $t('shuttle.manage.group_export') }}</h3>
-              <div class="action-grid" style="grid-template-columns: repeat(2, 1fr);">
-                <button class="action-btn" @click="doExportShwv" :disabled="!hasData" style="grid-column: span 2; background: var(--accent-glow); color: var(--accent-light); border-color: var(--border-accent);">
-                  <FileJson :size="16" /> ShWvData (JSON)
-                </button>
-                <button class="action-btn" @click="doExportJson" :disabled="!hasData" title="src/tgt ペアの JSON をエクスポート">
-                  <FileJson :size="16" /> Paired JSON
-                </button>
-                <button class="action-btn" @click="doExportCsv" :disabled="!hasData">
-                  <FileText :size="16" /> CSV
-                </button>
-                <button class="action-btn" @click="doExportTm" :disabled="!hasData">
-                  <Download :size="16" /> TM
-                </button>
-                <button class="action-btn" @click="doExportTb" :disabled="!hasData">
-                  <Download :size="16" /> TB
-                </button>
-              </div>
-            </div>
-
             <div class="action-group">
               <h3 class="group-title">{{ $t('shuttle.manage.group_split') }}</h3>
               <button class="action-btn" @click="doSplitByFile" :disabled="!hasData">
@@ -402,28 +471,51 @@ function doClear() {
                 </button>
               </div>
             </div>
+          </div>
+        </AppCardCollapse>
 
-            <div class="action-group">
-              <h3 class="group-title">用語 (TB) 一括反映</h3>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4;">
-                漢字衝突を防ぐ2段階マーカー置換でTB用語を一括反映します（tgt → pre → src の順でテキストを取得し、tgt に格納）。
-              </div>
-              <div style="margin-bottom: 10px;">
-                <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.78rem; color: var(--text-secondary);">
-                  <input type="checkbox" v-model="termMatchWholeWord" style="accent-color: var(--accent);" />
-                  <span>単語境界を考慮 (英単語の部分一致防止)</span>
-                </label>
-              </div>
-              <button class="action-btn" @click="doApplyTerms" :disabled="!hasData" style="width: 100%; justify-content: center; background: rgba(59, 130, 246, 0.12); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">
-                <Sparkles :size="16" /> TB用語を一括反映
+        <!-- 6. エクスポート Card -->
+        <AppCardCollapse v-model:open="isExportOpen" :title="$t('shuttle.manage.group_export', 'エクスポート')">
+          <template #header>
+            <div class="card-title-group">
+              <Download :size="16" class="header-icon" />
+              <h2 class="card-title">{{ $t('shuttle.manage.group_export', 'エクスポート') }}</h2>
+            </div>
+          </template>
+          <template #actions>
+            <ManualLink
+              href="https://lambuage.com/sheep-comb/02_steps_desc.html#%E3%82%B9%E3%83%86%E3%83%83%E3%83%95%E3%82%9A-5-%E3%83%86%E3%82%99%E3%83%BC%E3%82%BF%E3%81%AE%E5%88%86%E5%89%B2%E3%81%A8%E7%AE%A1%E7%90%86-%E7%AE%A1%E7%90%86%E3%83%98%E3%82%9A%E3%83%BC%E3%82%B7%E3%82%99"
+              :label="$t('manual.steps.manage', 'マニュアル')"
+              compact
+              @click.stop
+            />
+          </template>
+
+          <div class="action-list">
+            <div class="action-grid" style="grid-template-columns: repeat(2, 1fr);">
+              <button class="action-btn" @click="doExportShwv" :disabled="!hasData" style="grid-column: span 2; background: var(--accent-glow); color: var(--accent-light); border-color: var(--border-accent);">
+                <FileJson :size="16" /> ShWvData (JSON)
+              </button>
+              <button class="action-btn" @click="doExportJson" :disabled="!hasData" title="src/tgt ペアの JSON をエクスポート">
+                <FileJson :size="16" /> Paired JSON
+              </button>
+              <button class="action-btn" @click="doExportCsv" :disabled="!hasData">
+                <FileText :size="16" /> CSV
+              </button>
+              <button class="action-btn" @click="doExportTm" :disabled="!hasData">
+                <Download :size="16" /> TM
+              </button>
+              <button class="action-btn" @click="doExportTb" :disabled="!hasData">
+                <Download :size="16" /> TB
               </button>
             </div>
           </div>
-
-          <div class="status-msg" v-if="statusMsg.text" :class="statusMsg.type">
-            {{ statusMsg.text }}
-          </div>
         </AppCardCollapse>
+
+        <!-- Status Message -->
+        <div class="status-msg" v-if="statusMsg.text" :class="statusMsg.type">
+          {{ statusMsg.text }}
+        </div>
       </aside>
 
       <!-- Main content -->

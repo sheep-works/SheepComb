@@ -15,7 +15,7 @@ export async function initWasm() {
     const spindle = await import(/* @vite-ignore */ `${cleanBase}pkg-web/sheep_spindle.js`)
     const wasmUrl = `${cleanBase}pkg-web/sheep_spindle_bg.wasm`
 
-    await spindle.default(wasmUrl)
+    await spindle.default({ module_or_path: wasmUrl })
     wasmModule = spindle
     initialized = true
     console.log('[SheepComb] WASM Initialized successfully')

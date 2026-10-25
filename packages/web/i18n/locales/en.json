@@ -32,6 +32,8 @@
   "header": {
     "nav": {
       "shuttle": "Shuttle",
+      "suffolk": "Suffolk",
+      "suffolk_desc": "XLIFF Filter & Merge",
       "tools": "Tools",
       "manual": "Manual",
       "parser": "Parser",
@@ -54,7 +56,9 @@
       "check_percentage_desc": "Verify probability sums to 100%",
       "play": "Play",
       "edit_distance": "Edit Distance",
-      "edit_distance_desc": "Levenshtein distance visualization"
+      "edit_distance_desc": "Levenshtein distance visualization",
+      "chunk": "Chunk Splitter",
+      "chunk_desc": "Split long text by characters or tokens"
     }
   },
   "index": {
@@ -70,7 +74,8 @@
     "api_desc": "LLM requests and cache settings",
     "batch_desc": "Fast batch comparison of left/right text",
     "concordance_desc": "High-speed exact search with FlexSearch",
-    "edit_distance_desc": "Visualize edit distance and transformation steps between strings"
+    "edit_distance_desc": "Visualize edit distance and transformation steps between strings",
+    "chunk_desc": "Split long texts into chunks by character count or tokens"
   },
   "shuttle": {
     "constructor": {

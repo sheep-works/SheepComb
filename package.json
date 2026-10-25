@@ -13,7 +13,8 @@
     "generate": "pnpm --filter @sheep-comb/web generate",
     "preview": "pnpm --filter @sheep-comb/web preview",
     "dev:groom": "pnpm --filter @sheep-comb/groom dev",
-    "dev:bell": "pnpm --filter @sheep-comb/bell dev"
+    "dev:bell": "pnpm --filter @sheep-comb/bell dev",
+    "copy:suffolk": "node -e \"const fs=require('fs'); fs.cpSync('modules/Suffolk/pkg/web', 'packages/web/public/pkg-suffolk', { recursive: true, force: true }); console.log('Suffolk WASM copied to web/public/pkg-suffolk')\""
   },
   "devDependencies": {
     "typescript": "~6.0.2"
