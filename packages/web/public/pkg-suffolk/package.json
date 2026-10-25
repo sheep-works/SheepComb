@@ -4,7 +4,7 @@
   "collaborators": [
     "SheepFamily"
   ],
-  "version": "0.0.2",
+  "version": "0.0.3",
   "files": [
     "suffolk_wasm_bg.wasm",
     "suffolk_wasm.js",
