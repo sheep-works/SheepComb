@@ -53,8 +53,17 @@ const shuttleSteps = computed(() => [
   },
 ])
 
-// 2. 中央カラム: 独立した言語業務特化ツール (Groom & Bell - Warm Yellow / Amber)
+// 2. 中央カラム: 独立した言語業務特化ツール (Groom & Bell & Suffolk - Warm Yellow / Amber)
 const specializedApps = computed(() => [
+  {
+    to: '/suffolk',
+    title: 'Suffolk',
+    badge: 'XLIFF Filter',
+    desc: 'Rust WASMエンジンによる多形式ドキュメント（DOCX/XLSX/PPTX/HTML/IDML等）のXLIFF抽出と翻訳ファイル再構築。',
+    features: ['Okapi Tikal互換フィルタ', 'ブラウザ完全ローカル処理', 'XLIFF / ShWv相互連携'],
+    icon: Sparkles,
+    color: 'amber'
+  },
   {
     to: '/groom',
     title: 'SheepGroom',

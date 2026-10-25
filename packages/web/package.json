@@ -1,13 +1,13 @@
 {
   "name": "@sheep-comb/web",
-  "version": "2.0.1",
+  "version": "2.1.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
     "generate": "nuxt generate",
-    "preview": "nuxt preview",
+    "preview": "node preview.js",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
@@ -34,6 +34,7 @@
   "devDependencies": {
     "@nuxtjs/sitemap": "^8.6.1",
     "@types/node": "^24.12.2",
+    "@vite-pwa/nuxt": "^1.1.1",
     "@vue/tsconfig": "^0.9.1",
     "@xmldom/xmldom": "^0.9.10",
     "typescript": "~6.0.2",
