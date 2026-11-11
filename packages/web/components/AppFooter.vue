@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ExternalLink, ShieldCheck, Github, Globe } from 'lucide-vue-next'
+import { ExternalLink, ShieldCheck, Github, Globe, History } from 'lucide-vue-next'
+
+const localePath = useLocalePath()
 
 const config = useRuntimeConfig()
 const appVersion = computed(() => {
@@ -42,6 +44,11 @@ const appVersion = computed(() => {
           <ExternalLink :size="12" class="ext-icon" />
         </a>
 
+        <NuxtLink :to="localePath('/changelog')" class="footer-link">
+          <History :size="15" class="link-icon" />
+          <span>{{ $t('footer.changelog') }}</span>
+        </NuxtLink>
+
         <NuxtLink to="/license" class="footer-link">
           <ShieldCheck :size="15" class="link-icon" />
           <span>{{ $t('footer.license') }}</span>
@@ -52,7 +59,7 @@ const appVersion = computed(() => {
     <div class="footer-bottom">
       <p class="copyright">{{ $t('footer.copyright') }}</p>
       <div class="footer-meta">
-        <span class="version-label">Release v{{ appVersion }}</span>
+        <NuxtLink :to="localePath('/changelog')" class="version-label version-label-link" :title="$t('footer.changelog')">Release v{{ appVersion }}</NuxtLink>
       </div>
     </div>
   </footer>
@@ -198,6 +205,14 @@ const appVersion = computed(() => {
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   color: var(--text-muted);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.version-label-link:hover {
+  color: var(--accent-light);
+  border-color: var(--border-accent);
+  background: var(--bg-hover);
 }
 
 @media (max-width: 768px) {

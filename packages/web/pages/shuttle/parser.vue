@@ -9,7 +9,7 @@ definePageMeta({
   icon: 'database',
 })
 
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { FileUp, Search, Download, Database, Trash2, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileEdit, X, Check } from 'lucide-vue-next'
 // Note: Using relative paths instead of Nuxt aliases (~~, ~, @) to ensure stable resolution.
 import { useI18n } from 'vue-i18n'
@@ -20,6 +20,32 @@ import { SheepShuttle } from '@sheep-family/core'
 import { FileIO } from '../../utils/fileIO'
 import AppCardCollapse from '../../components/common/AppCardCollapse.vue'
 
+
+const isSidebarCollapsed = ref(false)
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+  if (import.meta.client) {
+    try {
+      localStorage.setItem('sheepcomb_parser_sidebar_collapsed', String(isSidebarCollapsed.value))
+    } catch {
+      // ignore
+    }
+  }
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    try {
+      const saved = localStorage.getItem('sheepcomb_parser_sidebar_collapsed')
+      if (saved !== null) {
+        isSidebarCollapsed.value = saved === 'true'
+      }
+    } catch {
+      // ignore
+    }
+  }
+})
 
 // ストアおよびコンポーネントの状態管理
 const store = useShuttleStore()
@@ -333,9 +359,54 @@ function applyDirectInput() {
 
 <template>
   <div class="parser-view">
-    <div class="parser-layout">
+    <div class="parser-layout" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       <!-- Sidebar -->
-      <aside class="sidebar">
+      <aside class="sidebar" :class="{ 'collapsed': isSidebarCollapsed }">
+        <!-- 最小化（折りたたみ）表示 -->
+        <div
+          v-if="isSidebarCollapsed"
+          class="sidebar-mini"
+          @click="toggleSidebar"
+          :title="$t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+        >
+          <button
+            type="button"
+            class="btn-toggle-sidebar mini-toggle"
+            @click.stop="toggleSidebar"
+            :title="$t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+            aria-label="Expand sidebar"
+          >
+            <ChevronsRight :size="16" />
+          </button>
+          <div class="mini-title-wrapper">
+            <span class="mini-title">Parser</span>
+          </div>
+          <div
+            v-if="store.hasUnits"
+            class="mini-badge"
+            :title="$t('shuttle.parser.segments', { count: store.unitCount })"
+          >
+            {{ store.unitCount }}
+          </div>
+        </div>
+
+        <!-- 展開時のサイドバー -->
+        <div v-show="!isSidebarCollapsed" class="sidebar-full">
+          <div class="sidebar-header-bar">
+            <div class="sidebar-title-wrapper">
+              <Database :size="15" class="header-icon" />
+              <span class="sidebar-title">Parser</span>
+            </div>
+            <button
+              type="button"
+              class="btn-toggle-sidebar"
+              @click="toggleSidebar"
+              :title="$t('tools.batch.collapse_sidebar') || 'サイドバーを折りたたむ'"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronsLeft :size="16" />
+            </button>
+          </div>
         <!-- 1. アップロードセクション -->
         <AppCardCollapse :title="$t('shuttle.parser.upload_title')" v-model:open="isUploadOpen" class="sidebar-card">
           <template #actions>
@@ -477,6 +548,7 @@ function applyDirectInput() {
 
         <div class="status-msg" v-if="statusMsg.text" :class="statusMsg.type">
           {{ statusMsg.text }}
+        </div>
         </div>
       </aside>
 
@@ -674,6 +746,14 @@ function applyDirectInput() {
   }
 }
 
+.parser-layout {
+  transition: gap var(--transition-slow);
+}
+
+.parser-layout.sidebar-collapsed {
+  gap: 16px;
+}
+
 .sidebar {
   width: 340px;
   flex-shrink: 0;
@@ -685,6 +765,124 @@ function applyDirectInput() {
   flex-direction: column;
   gap: 12px;
   padding-bottom: 20px;
+  transition: width var(--transition-slow);
+}
+
+.sidebar.collapsed {
+  width: 46px;
+  overflow-y: visible;
+}
+
+.sidebar-full {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.sidebar-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-toggle-sidebar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-toggle-sidebar:hover {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--bg-hover);
+}
+
+.sidebar-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  min-height: 220px;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  width: 46px;
+}
+
+.sidebar-mini:hover {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+}
+
+.sidebar-mini .mini-toggle {
+  margin-bottom: 2px;
+}
+
+.sidebar-mini:hover .mini-toggle {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-glow);
+}
+
+.mini-title-wrapper {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.mini-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.mini-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  line-height: 1.2;
 }
 
 .results-area {

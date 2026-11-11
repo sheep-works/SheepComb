@@ -4,8 +4,8 @@ definePageMeta({
   icon: 'diff',
 })
 
-import { ref, computed } from 'vue'
-import { Split, Play, Trash2, Import, FileText, CheckCircle, AlertCircle, Download, Cpu } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { Split, Play, Trash2, Import, FileText, CheckCircle, AlertCircle, Download, Cpu, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
 import { useDiffStore } from '../../stores/diffStore'
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { useI18n } from 'vue-i18n'
@@ -19,6 +19,31 @@ const isChecked = ref(false)
 const isBlockCheck = ref(false)
 const errorMsg = ref('')
 const showAllLines = ref(false)
+const isSidebarCollapsed = ref(false)
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+  if (import.meta.client) {
+    try {
+      localStorage.setItem('sheepcomb_batch_sidebar_collapsed', String(isSidebarCollapsed.value))
+    } catch {
+      // ignore
+    }
+  }
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    try {
+      const saved = localStorage.getItem('sheepcomb_batch_sidebar_collapsed')
+      if (saved !== null) {
+        isSidebarCollapsed.value = saved === 'true'
+      }
+    } catch {
+      // ignore
+    }
+  }
+})
 
 const srcLines = computed(() => store.srcText.split('\n').filter(l => l !== '').length)
 const tgtLines = computed(() => store.tgtText.split('\n').filter(l => l !== '').length)
@@ -290,12 +315,51 @@ const downloadHtml = () => {
 
 <template>
   <div class="batch-view">
-    <div class="batch-layout">
+    <div class="batch-layout" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       <!-- Sidebar: Controls -->
-      <aside class="sidebar">
-        <div class="card">
-          <div class="card-header">
+      <aside class="sidebar" :class="{ 'collapsed': isSidebarCollapsed }">
+        <!-- 最小化（折りたたみ）表示 -->
+        <div
+          v-if="isSidebarCollapsed"
+          class="sidebar-mini"
+          @click="toggleSidebar"
+          :title="$t('tools.batch.expand_sidebar')"
+        >
+          <button
+            type="button"
+            class="btn-toggle-sidebar mini-toggle"
+            @click.stop="toggleSidebar"
+            :title="$t('tools.batch.expand_sidebar')"
+            aria-label="Expand sidebar"
+          >
+            <ChevronsRight :size="16" />
+          </button>
+          <div class="mini-title-wrapper">
+            <span class="mini-title">{{ $t('tools.batch.title_tool') }}</span>
+          </div>
+          <div
+            v-if="isChecked && diffCount > 0"
+            class="mini-badge"
+            :title="$t('tools.batch.title_result', { count: diffCount })"
+          >
+            {{ diffCount }}
+          </div>
+        </div>
+
+        <!-- 展開時のサイドバー -->
+        <div v-show="!isSidebarCollapsed" class="sidebar-full">
+          <div class="card">
+          <div class="card-header space-between">
             <h2>{{ $t('tools.batch.title_tool') }}</h2>
+            <button
+              type="button"
+              class="btn-toggle-sidebar"
+              @click="toggleSidebar"
+              :title="$t('tools.batch.collapse_sidebar')"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronsLeft :size="16" />
+            </button>
           </div>
           <div class="action-list">
             <button class="btn primary" @click="runCheckBlock" :disabled="!store.srcText && !store.tgtText">
@@ -341,6 +405,7 @@ const downloadHtml = () => {
         <div class="alert-info">
           <AlertCircle :size="16" />
           <p>{{ $t('tools.batch.alert_hint') }}</p>
+        </div>
         </div>
       </aside>
 
@@ -427,6 +492,110 @@ const downloadHtml = () => {
   grid-template-columns: 320px 1fr;
   gap: 24px;
   align-items: start;
+  transition: grid-template-columns var(--transition-slow);
+}
+
+.batch-layout.sidebar-collapsed {
+  grid-template-columns: 46px 1fr;
+  gap: 16px;
+}
+
+.sidebar {
+  transition: width var(--transition-slow);
+}
+
+.sidebar.collapsed {
+  width: 46px;
+}
+
+.sidebar-full {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.btn-toggle-sidebar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-toggle-sidebar:hover {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--bg-hover);
+}
+
+.sidebar-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  min-height: 220px;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-mini:hover {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+}
+
+.sidebar-mini .mini-toggle {
+  margin-bottom: 2px;
+}
+
+.sidebar-mini:hover .mini-toggle {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-glow);
+}
+
+.mini-title-wrapper {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.mini-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.mini-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  line-height: 1.2;
+}
+
+.main-content {
+  min-width: 0;
 }
 
 .action-list {

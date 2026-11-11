@@ -261,6 +261,8 @@
       "html_th_new": "新 (New)",
       "html_th_diff": "差分 (Diff)",
       "title_tool": "バッチツール",
+      "collapse_sidebar": "サイドバーを折りたたむ",
+      "expand_sidebar": "サイドバーを展開",
       "btn_check_block": "差分を確認",
       "btn_check_lines": "差分を確認（行単位）",
       "btn_import": "抽出データからインポート",
@@ -374,6 +376,7 @@
     "desc": "多言語データ処理・解析・LLM連携プラットフォーム",
     "official_site": "Lambuage",
     "github": "GitHub",
+    "changelog": "バージョンログ",
     "license": "ライセンス",
     "copyright": "© 2026 Lambuage / sheep-works. All rights reserved."
   },
@@ -386,5 +389,10 @@
     "oss_license_desc": "SheepCombWeb の開発・動作には以下のオープンソースソフトウェアが使用されています。各開発者・コミュニティの皆様に感謝いたします。",
     "view_license": "ライセンス本文を表示",
     "hide_license": "ライセンス本文を閉じる"
+  },
+  "changelog": {
+    "title": "バージョンログ",
+    "subtitle": "SheepComb v2.0 以降の主な機能追加・改善履歴",
+    "latest": "Latest"
   }
 }

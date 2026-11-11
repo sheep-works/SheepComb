@@ -9,7 +9,7 @@ definePageMeta({
 })
 
 import { ref, computed, watch, onMounted } from 'vue'
-import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check, Settings2, Copy, Layers, MessageSquareCode } from 'lucide-vue-next'
+import { Send, Cloud, Loader2, AlertCircle, RefreshCw, Trash2, Download, Upload, RotateCcw, Check, Settings2, Copy, Layers, MessageSquareCode, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
 // Note: Using relative paths instead of Nuxt aliases (~~, ~, @) to ensure stable resolution.
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { useI18n } from 'vue-i18n'
@@ -21,6 +21,19 @@ import defaultTransPromptText from '../../prompts/default-translation.md?raw'
 const store = useShuttleStore()
 const { t } = useI18n()
 
+const isSidebarCollapsed = ref(false)
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+  if (import.meta.client) {
+    try {
+      localStorage.setItem('sheepcomb_api_sidebar_collapsed', String(isSidebarCollapsed.value))
+    } catch {
+      // ignore
+    }
+  }
+}
+
 // Collapse state
 const isProviderOpen = ref(false)
 const isChunkOpen = ref(true)
@@ -28,6 +41,16 @@ const isPromptOpen = ref(true)
 const isSummaryOpen = ref(true)
 
 onMounted(async () => {
+  if (import.meta.client) {
+    try {
+      const saved = localStorage.getItem('sheepcomb_api_sidebar_collapsed')
+      if (saved !== null) {
+        isSidebarCollapsed.value = saved === 'true'
+      }
+    } catch {
+      // ignore
+    }
+  }
   store.provider = 'honox-local'
   await store.checkConnection()
 })
@@ -606,9 +629,54 @@ function getStatusColor(status: string) {
       </div>
     </div>
 
-    <div class="api-layout">
+    <div class="api-layout" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       <!-- Sidebar: Request Settings -->
-      <aside class="sidebar">
+      <aside class="sidebar" :class="{ 'collapsed': isSidebarCollapsed }">
+        <!-- 最小化（折りたたみ）表示 -->
+        <div
+          v-if="isSidebarCollapsed"
+          class="sidebar-mini"
+          @click="toggleSidebar"
+          :title="$t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+        >
+          <button
+            type="button"
+            class="btn-toggle-sidebar mini-toggle"
+            @click.stop="toggleSidebar"
+            :title="$t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+            aria-label="Expand sidebar"
+          >
+            <ChevronsRight :size="16" />
+          </button>
+          <div class="mini-title-wrapper">
+            <span class="mini-title">API Client</span>
+          </div>
+          <div
+            v-if="store.hasChunks"
+            class="mini-badge"
+            :title="store.chunks.length + ' chunks'"
+          >
+            {{ store.chunks.length }}
+          </div>
+        </div>
+
+        <!-- 展開時のサイドバー -->
+        <div v-show="!isSidebarCollapsed" class="sidebar-full">
+          <div class="sidebar-header-bar">
+            <div class="sidebar-title-wrapper">
+              <Cloud :size="15" class="header-icon" />
+              <span class="sidebar-title">API Client</span>
+            </div>
+            <button
+              type="button"
+              class="btn-toggle-sidebar"
+              @click="toggleSidebar"
+              :title="$t('tools.batch.collapse_sidebar') || 'サイドバーを折りたたむ'"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronsLeft :size="16" />
+            </button>
+          </div>
         <!-- LLM Provider Settings -->
         <AppCardCollapse v-model:open="isProviderOpen" :title="$t('shuttle.api.title_provider_settings')">
           <template #header>
@@ -819,6 +887,7 @@ function getStatusColor(status: string) {
             </div>
           </div>
         </AppCardCollapse>
+        </div>
       </aside>
 
       <!-- Main: Chunk List View -->
@@ -927,6 +996,11 @@ function getStatusColor(status: string) {
   display: flex;
   gap: 20px;
   align-items: flex-start;
+  transition: gap var(--transition-slow);
+}
+
+.api-layout.sidebar-collapsed {
+  gap: 16px;
 }
 
 @media (max-width: 1000px) {
@@ -946,6 +1020,124 @@ function getStatusColor(status: string) {
   flex-direction: column;
   gap: 12px;
   padding-bottom: 20px;
+  transition: width var(--transition-slow);
+}
+
+.sidebar.collapsed {
+  width: 46px;
+  overflow-y: visible;
+}
+
+.sidebar-full {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.sidebar-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-toggle-sidebar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-toggle-sidebar:hover {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--bg-hover);
+}
+
+.sidebar-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  min-height: 220px;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  width: 46px;
+}
+
+.sidebar-mini:hover {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+}
+
+.sidebar-mini .mini-toggle {
+  margin-bottom: 2px;
+}
+
+.sidebar-mini:hover .mini-toggle {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-glow);
+}
+
+.mini-title-wrapper {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.mini-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.mini-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  line-height: 1.2;
 }
 
 .card-title-group {
