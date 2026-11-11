@@ -31,5 +31,8 @@ export function getPageTitle(route: RouteLocationNormalizedLoaded | RouteLocatio
   if (path.startsWith('/license')) {
     return 'オープンソースライセンス (License) | SheepComb'
   }
+  if (path.startsWith('/changelog')) {
+    return 'バージョンログ (Version Log) | SheepComb'
+  }
   return metaTitle ? `${metaTitle} | SheepComb` : 'SheepComb'
 }

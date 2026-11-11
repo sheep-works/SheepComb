@@ -8,8 +8,8 @@ definePageMeta({
   icon: 'hammer',
 })
 
-import { ref, computed, watch } from 'vue'
-import { FileUp, Trash2, Download, Hammer, Loader2, CheckCircle, AlertTriangle, Archive, HelpCircle } from 'lucide-vue-next'
+import { ref, computed, watch, onMounted } from 'vue'
+import { FileUp, Trash2, Download, Hammer, Loader2, CheckCircle, AlertTriangle, Archive, HelpCircle, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { FileIO } from '../../utils/fileIO'
@@ -19,6 +19,32 @@ import type { ShWvData, ShWvFileInfo } from '@sheep-family/types'
 
 const store = useShuttleStore()
 const { t } = useI18n()
+
+const isSidebarCollapsed = ref(false)
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+  if (import.meta.client) {
+    try {
+      localStorage.setItem('sheepcomb_builder_sidebar_collapsed', String(isSidebarCollapsed.value))
+    } catch {
+      // ignore
+    }
+  }
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    try {
+      const saved = localStorage.getItem('sheepcomb_builder_sidebar_collapsed')
+      if (saved !== null) {
+        isSidebarCollapsed.value = saved === 'true'
+      }
+    } catch {
+      // ignore
+    }
+  }
+})
 
 // Files state
 const xliffInput = ref<HTMLInputElement | null>(null)
@@ -326,9 +352,54 @@ const getUnitsCountString = (matchedIndex: number) => {
 
 <template>
   <div class="builder-view">
-    <div class="builder-layout">
+    <div class="builder-layout" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       <!-- Sidebar -->
-      <aside class="sidebar">
+      <aside class="sidebar" :class="{ 'collapsed': isSidebarCollapsed }">
+        <!-- 最小化（折りたたみ）表示 -->
+        <div
+          v-if="isSidebarCollapsed"
+          class="sidebar-mini"
+          @click="toggleSidebar"
+          :title="$t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+        >
+          <button
+            type="button"
+            class="btn-toggle-sidebar mini-toggle"
+            @click.stop="toggleSidebar"
+            :title="$t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+            aria-label="Expand sidebar"
+          >
+            <ChevronsRight :size="16" />
+          </button>
+          <div class="mini-title-wrapper">
+            <span class="mini-title">Builder</span>
+          </div>
+          <div
+            v-if="xliffFiles.length > 0"
+            class="mini-badge"
+            :title="xliffFiles.length + ' files'"
+          >
+            {{ xliffFiles.length }}
+          </div>
+        </div>
+
+        <!-- 展開時のサイドバー -->
+        <div v-show="!isSidebarCollapsed" class="sidebar-full">
+          <div class="sidebar-header-bar">
+            <div class="sidebar-title-wrapper">
+              <Hammer :size="15" class="header-icon" />
+              <span class="sidebar-title">Builder</span>
+            </div>
+            <button
+              type="button"
+              class="btn-toggle-sidebar"
+              @click="toggleSidebar"
+              :title="$t('tools.batch.collapse_sidebar') || 'サイドバーを折りたたむ'"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronsLeft :size="16" />
+            </button>
+          </div>
         <!-- Bilingual Files Card -->
         <AppCardCollapse v-model:open="isXliffOpen" :title="$t('shuttle.builder.upload_xliff')">
           <template #header>
@@ -462,6 +533,7 @@ const getUnitsCountString = (matchedIndex: number) => {
         <div class="status-msg" v-if="store.statusMsg.text" :class="store.statusMsg.type">
           {{ store.statusMsg.text }}
         </div>
+        </div>
       </aside>
 
       <!-- Main Content -->
@@ -553,6 +625,11 @@ const getUnitsCountString = (matchedIndex: number) => {
   display: flex;
   gap: 20px;
   align-items: flex-start;
+  transition: gap var(--transition-slow);
+}
+
+.builder-layout.sidebar-collapsed {
+  gap: 16px;
 }
 
 @media (max-width: 900px) {
@@ -572,6 +649,124 @@ const getUnitsCountString = (matchedIndex: number) => {
   flex-direction: column;
   gap: 12px;
   padding-bottom: 20px;
+  transition: width var(--transition-slow);
+}
+
+.sidebar.collapsed {
+  width: 46px;
+  overflow-y: visible;
+}
+
+.sidebar-full {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.sidebar-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-toggle-sidebar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-toggle-sidebar:hover {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--bg-hover);
+}
+
+.sidebar-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  min-height: 220px;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  width: 46px;
+}
+
+.sidebar-mini:hover {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+}
+
+.sidebar-mini .mini-toggle {
+  margin-bottom: 2px;
+}
+
+.sidebar-mini:hover .mini-toggle {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-glow);
+}
+
+.mini-title-wrapper {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.mini-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.mini-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  line-height: 1.2;
 }
 
 .card-title-group {

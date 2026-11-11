@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { X, ChevronLeft, ChevronRight, ChevronDown, ArrowRight, CornerDownRight, Database, Book, Layers, ExternalLink, Sparkles, Undo2 } from 'lucide-vue-next'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { X, ChevronLeft, ChevronRight, ChevronDown, ArrowRight, CornerDownRight, Database, Book, Layers, ExternalLink, Sparkles, Undo2, Pencil, Check } from 'lucide-vue-next'
 import type { ShWvData, ShWvUnit, ShWvMeta, ShWvRefTm } from '@sheep-family/types'
 
 const isHighlightEnabled = ref(true)
@@ -143,8 +143,30 @@ function handleOverlayWheel(e: WheelEvent) {
   }
 }
 
-// Lock body scroll while modal is open
+// TGT inline edit state
+const isEditingTgt = ref(false)
+const tgtTextareaRef = ref<HTMLTextAreaElement | null>(null)
+
+const tgtRows = computed(() => {
+  const text = selectedUnit.value?.tgt ?? ''
+  const lineCount = text.split('\n').length
+  return Math.min(Math.max(lineCount, 3), 10)
+})
+
+async function startEditTgt() {
+  if (!selectedUnit.value) return
+  isEditingTgt.value = true
+  await nextTick()
+  tgtTextareaRef.value?.focus()
+}
+
+function finishEditTgt() {
+  isEditingTgt.value = false
+}
+
+// Lock body scroll while modal is open & reset TGT edit mode on unit change
 watch(selectedIdx, (newVal) => {
+  isEditingTgt.value = false
   if (typeof document !== 'undefined') {
     if (newVal !== null) {
       document.body.style.overflow = 'hidden'
@@ -417,10 +439,45 @@ defineExpose({ resetPage, openModal })
               </div>
 
               <div class="jv-field-block">
-                <div class="jv-field-header">
+                <div class="jv-field-header jv-field-header-between">
                   <span class="jv-label jv-label-tgt">TGT (訳文)</span>
+                  <button
+                    v-if="!isEditingTgt"
+                    type="button"
+                    class="jv-field-edit-btn"
+                    @click="startEditTgt"
+                    title="訳文を編集"
+                  >
+                    <Pencil :size="12" />
+                    <span>編集</span>
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="jv-field-edit-btn jv-field-edit-done"
+                    @mousedown.prevent="finishEditTgt"
+                    title="編集を完了 (Esc)"
+                  >
+                    <Check :size="12" />
+                    <span>完了</span>
+                  </button>
                 </div>
-                <div class="jv-text-box jv-text-tgt" v-html="highlightedTgt || '(訳文なし)'"></div>
+                <textarea
+                  v-if="isEditingTgt"
+                  ref="tgtTextareaRef"
+                  v-model="selectedUnit.tgt"
+                  class="jv-textarea-tgt"
+                  placeholder="訳文を入力..."
+                  :rows="tgtRows"
+                  @blur="finishEditTgt"
+                ></textarea>
+                <div
+                  v-else
+                  class="jv-text-box jv-text-tgt jv-text-editable"
+                  v-html="highlightedTgt || '(訳文なし)'"
+                  @dblclick="startEditTgt"
+                  title="ダブルクリックまたは「編集」ボタンで訳文を修正できます"
+                ></div>
               </div>
 
               <div class="jv-field-block" v-if="selectedUnit.pre">
@@ -1199,6 +1256,73 @@ defineExpose({ resetPage, openModal })
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.jv-field-header-between {
+  justify-content: space-between;
+}
+
+.jv-field-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.jv-field-edit-btn:hover {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.jv-field-edit-done {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.jv-text-editable {
+  cursor: text;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.jv-text-editable:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.jv-textarea-tgt {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-left: 4px solid #10b981;
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.jv-textarea-tgt:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.jv-textarea-tgt::placeholder {
+  color: var(--text-muted);
 }
 
 .jv-text-box {

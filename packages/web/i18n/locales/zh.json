@@ -262,6 +262,8 @@
       "html_th_new": "新 (New)",
       "html_th_diff": "差异 (Diff)",
       "title_tool": "批处理工具",
+      "collapse_sidebar": "折叠侧边栏",
+      "expand_sidebar": "展开侧边栏",
       "btn_check_block": "检查差异",
       "btn_check_lines": "检查差异 (按行)",
       "btn_import": "从抽出数据导入",
@@ -375,6 +377,7 @@
     "desc": "多语言数据处理、分析与LLM集成平台。",
     "official_site": "Lambuage",
     "github": "GitHub",
+    "changelog": "更新日志",
     "license": "开源许可证",
     "copyright": "© 2026 Lambuage / sheep-works. 保留所有权利。"
   },
@@ -387,5 +390,10 @@
     "oss_license_desc": "SheepCombWeb 使用了以下开源软件库。衷心感谢所有开发者与开源社区的贡献。",
     "view_license": "查看许可证正文",
     "hide_license": "收起许可证正文"
+  },
+  "changelog": {
+    "title": "版本更新日志",
+    "subtitle": "SheepComb v2.0 以来的主要功能更新与改进记录",
+    "latest": "Latest"
   }
 }

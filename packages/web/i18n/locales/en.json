@@ -262,6 +262,8 @@
       "html_th_new": "New",
       "html_th_diff": "Diff",
       "title_tool": "Batch Tool",
+      "collapse_sidebar": "Collapse sidebar",
+      "expand_sidebar": "Expand sidebar",
       "btn_check_block": "Check Diff",
       "btn_check_lines": "Check Diff (Line by Line)",
       "btn_import": "Import from Extraction",
@@ -375,6 +377,7 @@
     "desc": "Multilingual data processing, analysis, and LLM integration platform.",
     "official_site": "Lambuage",
     "github": "GitHub",
+    "changelog": "Changelog",
     "license": "License",
     "copyright": "© 2026 Lambuage / sheep-works. All rights reserved."
   },
@@ -387,5 +390,10 @@
     "oss_license_desc": "SheepCombWeb is built using the following open source libraries. We are grateful to the authors and open-source communities.",
     "view_license": "View License Text",
     "hide_license": "Hide License Text"
+  },
+  "changelog": {
+    "title": "Version Log",
+    "subtitle": "Major updates and improvements since SheepComb v2.0",
+    "latest": "Latest"
   }
 }

@@ -8,8 +8,8 @@ definePageMeta({
   icon: 'zap',
 })
 
-import { ref, computed } from 'vue'
-import { FileUp, Trash2, Play, CheckCircle, AlertCircle, Database, Book, Layers, Download, ArrowRight, Settings2, BarChart2, Search } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { FileUp, Trash2, Play, CheckCircle, AlertCircle, Database, Book, Layers, Download, ArrowRight, Settings2, BarChart2, Search, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
 import { useShuttleStore } from '../../stores/shuttleStore'
 import { initWasm, getWasm } from '~/utils/wasm'
 import { FileIO } from '../../utils/fileIO'
@@ -23,6 +23,32 @@ const { t } = useI18n()
 
 const isProcessing = ref(false)
 const statusMsg = ref({ text: '', type: 'info' as 'info' | 'success' | 'error' })
+
+const isSidebarCollapsed = ref(false)
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+  if (import.meta.client) {
+    try {
+      localStorage.setItem('sheepcomb_analyzer_sidebar_collapsed', String(isSidebarCollapsed.value))
+    } catch {
+      // ignore
+    }
+  }
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    try {
+      const saved = localStorage.getItem('sheepcomb_analyzer_sidebar_collapsed')
+      if (saved !== null) {
+        isSidebarCollapsed.value = saved === 'true'
+      }
+    } catch {
+      // ignore
+    }
+  }
+})
 
 // カード開閉状態
 const isTargetOpen = ref(true)
@@ -270,10 +296,55 @@ function downloadShwv() {
 
 <template>
   <div class="analyzer-view">
-    <div class="analyzer-layout">
+    <div class="analyzer-layout" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       
       <!-- Sidebar (340px Sticky) -->
-      <aside class="sidebar">
+      <aside class="sidebar" :class="{ 'collapsed': isSidebarCollapsed }">
+        <!-- 最小化（折りたたみ）表示 -->
+        <div
+          v-if="isSidebarCollapsed"
+          class="sidebar-mini"
+          @click="toggleSidebar"
+          :title="t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+        >
+          <button
+            type="button"
+            class="btn-toggle-sidebar mini-toggle"
+            @click.stop="toggleSidebar"
+            :title="t('tools.batch.expand_sidebar') || 'サイドバーを展開'"
+            aria-label="Expand sidebar"
+          >
+            <ChevronsRight :size="16" />
+          </button>
+          <div class="mini-title-wrapper">
+            <span class="mini-title">Analyzer</span>
+          </div>
+          <div
+            v-if="store.hasData"
+            class="mini-badge"
+            :title="t('shuttle.manage.segments', { count: store.shwvUnitCount })"
+          >
+            {{ store.shwvUnitCount }}
+          </div>
+        </div>
+
+        <!-- 展開時のサイドバー -->
+        <div v-show="!isSidebarCollapsed" class="sidebar-full">
+          <div class="sidebar-header-bar">
+            <div class="sidebar-title-wrapper">
+              <BarChart2 :size="15" class="header-icon" />
+              <span class="sidebar-title">Analyzer</span>
+            </div>
+            <button
+              type="button"
+              class="btn-toggle-sidebar"
+              @click="toggleSidebar"
+              :title="t('tools.batch.collapse_sidebar') || 'サイドバーを折りたたむ'"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronsLeft :size="16" />
+            </button>
+          </div>
         
         <!-- 1. 翻訳対象ファイル -->
         <AppCardCollapse title="1. 翻訳対象ファイル" v-model:open="isTargetOpen" class="sidebar-card">
@@ -387,6 +458,7 @@ function downloadShwv() {
         <div v-if="statusMsg.text" :class="['status-box', statusMsg.type]">
           <span>{{ statusMsg.text }}</span>
         </div>
+        </div>
       </aside>
 
       <!-- Main Results Area -->
@@ -499,6 +571,12 @@ function downloadShwv() {
   grid-template-columns: 350px 1fr;
   gap: 24px;
   align-items: start;
+  transition: grid-template-columns var(--transition-slow);
+}
+
+.analyzer-layout.sidebar-collapsed {
+  grid-template-columns: 46px 1fr;
+  gap: 16px;
 }
 
 @media (max-width: 900px) {
@@ -516,6 +594,125 @@ function downloadShwv() {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
   padding-right: 4px;
+  transition: width var(--transition-slow);
+}
+
+.sidebar.collapsed {
+  width: 46px;
+  overflow-y: visible;
+  padding-right: 0;
+}
+
+.sidebar-full {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.sidebar-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-toggle-sidebar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-toggle-sidebar:hover {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--bg-hover);
+}
+
+.sidebar-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  min-height: 220px;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  width: 46px;
+}
+
+.sidebar-mini:hover {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+}
+
+.sidebar-mini .mini-toggle {
+  margin-bottom: 2px;
+}
+
+.sidebar-mini:hover .mini-toggle {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-glow);
+}
+
+.mini-title-wrapper {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.mini-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.mini-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  line-height: 1.2;
 }
 
 .store-notice {
