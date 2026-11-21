@@ -13,7 +13,7 @@ definePageMeta({
   title: 'Version Log'
 })
 
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 const localePath = useLocalePath()
 
 type LocaleCode = 'ja' | 'en' | 'zh'
@@ -28,6 +28,61 @@ interface ReleaseEntry {
 }
 
 const releases: ReleaseEntry[] = [
+  {
+    version: '2.3.1',
+    date: '2026-11-20',
+    isLatest: true,
+    tag: {
+      ja: '不具合の修正',
+      en: 'Bug fix',
+      zh: '修复错误'
+    },
+    summary: {
+      ja: 'Suffolk のバグ修正に対応',
+      en: 'Modified with Suffolk bug fix',
+      zh: '对应 Suffolk 的错误修复'
+    },
+    items: {
+      ja: [
+        'Suffolk の isSub フラグの不整合を調整',
+      ],
+      en: [
+        'Optimized the isSub property of Suffolk',
+      ],
+      zh: [
+        '修复了 Suffolk 的 isSub 属性相关bug',
+      ]
+    }
+  },
+  {
+    version: '2.3.0',
+    date: '2026-11-19',
+    isLatest: true,
+    tag: {
+      ja: '不具合の修正と機能追加',
+      en: 'Bug fix & New function',
+      zh: '修复错误与添加新功能'
+    },
+    summary: {
+      ja: '管理ページの表示が反映されないバグを修正し、WWCのみの計算機能を追加しました。',
+      en: 'Fixed a display sync issue on the Manage page and added a standalone Weighted Word Count (WWC) calculation feature.',
+      zh: '修复了管理页面显示未及时更新的错误，并添加了仅计算加权字数（WWC）的功能。'
+    },
+    items: {
+      ja: [
+        '管理ページで「preをクリア」「tgtをクリア」を押した際に、詳細カードにうまく反映されないバグを修正',
+        '解析・構造化ページで、すでにTMによる解析が終わっている場合、重複を考慮した文字数カウントのみ実行できる機能を追加',
+      ],
+      en: [
+        'Fixed a bug where clicking "Clear pre" or "Clear tgt" on the Manage page did not properly reflect in the detail card',
+        'Added a feature on the Analyzer page to run only repetition-aware word/character counting when TM analysis is already completed',
+      ],
+      zh: [
+        '修复了在管理页面点击“清空 pre”或“清空 tgt”后未能正确同步至详情卡片的错误',
+        '在解析・结构化页面中，新增在已完成 TM 分析时仅执行计入重复率的字数统计功能',
+      ]
+    }
+  },
   {
     version: '2.2.0',
     date: '2026-11-11',
@@ -175,8 +230,8 @@ const currentLang = computed<LocaleCode>(() => {
         <History :size="28" class="header-icon" />
       </div>
       <div class="header-text">
-        <h1>{{ $t('changelog.title') }}</h1>
-        <p class="subtitle">{{ $t('changelog.subtitle') }}</p>
+        <h1>{{ t('changelog.title') }}</h1>
+        <p class="subtitle">{{ t('changelog.subtitle') }}</p>
       </div>
       <NuxtLink :to="localePath('/')" class="btn-back-home">
         <ArrowLeft :size="15" />
@@ -198,7 +253,7 @@ const currentLang = computed<LocaleCode>(() => {
             <span class="release-version">v{{ release.version }}</span>
             <span v-if="release.isLatest" class="badge-latest">
               <Sparkles :size="12" />
-              {{ $t('changelog.latest') }}
+              {{ t('changelog.latest') }}
             </span>
             <span class="badge-tag">
               <Tag :size="11" />
