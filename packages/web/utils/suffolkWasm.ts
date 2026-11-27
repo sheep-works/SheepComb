@@ -138,8 +138,8 @@ export async function exportFailsafe(
 export function getSuffolkVersion(): string {
   try {
     const mod = getSuffolk()
-    return mod.suffolk_version ? mod.suffolk_version() : '0.0.2'
+    return mod.suffolk_version ? mod.suffolk_version() : '0.0.3'
   } catch {
-    return '0.0.2'
+    return '0.0.3'
   }
 }

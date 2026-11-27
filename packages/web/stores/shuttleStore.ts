@@ -162,7 +162,18 @@ export const useShuttleStore = defineStore('shuttle', () => {
   function syncState() {
     units.value = [...shuttle.units]
     files.value = [...shuttle.files]
-    data.value = shuttle.data ? shuttle.data : null // data は structuredClone 済み
+    if (shuttle.data) {
+      data.value = {
+        ...shuttle.data,
+        meta: { ...shuttle.data.meta },
+        body: {
+          ...shuttle.data.body,
+          units: [...shuttle.data.body.units],
+        },
+      }
+    } else {
+      data.value = null
+    }
     tms.value = [...shuttle.tms]
     tbs.value = [...shuttle.tbs]
     chunks.value = [...shuttle.chunks]
@@ -452,10 +463,21 @@ export const useShuttleStore = defineStore('shuttle', () => {
    * TB用語を一括反映・置換する
    */
   function applyTerms(options?: ApplyTermsOptions): number {
-    if (!data.value) return 0
-    const count = shuttle.manager.applyTerms(data.value, options)
+    const targetData = shuttle.data || data.value
+    if (!targetData) return 0
+    const count = shuttle.manager.applyTerms(targetData, options)
     syncState()
     return count
+  }
+
+  /**
+   * 外部の JSONL テキストを読み込んで、現在のデータの訳文を更新
+   */
+  function updateFromJsonl(jsonlText: string) {
+    if (!shuttle.data) return
+    const updated = shuttle.manager.updateFromJsonl(shuttle.data, jsonlText)
+    shuttle.data.body.units = updated
+    syncState()
   }
 
   // --- Rehydration (永続化データからの復元) ---
@@ -567,6 +589,7 @@ export const useShuttleStore = defineStore('shuttle', () => {
     swapPreTgt,
     clearField,
     copyField,
+    updateFromJsonl,
     // インスタンスへの直接アクセスが必要な場合用
     shuttle
   }

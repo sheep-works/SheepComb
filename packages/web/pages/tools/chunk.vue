@@ -5,16 +5,27 @@ definePageMeta({
 })
 
 import { ref, computed } from 'vue'
-import { Scissors, Trash2 } from 'lucide-vue-next'
+import { Scissors, Layers, Trash2, Copy, Check, Pencil, ChevronDown, ChevronsUpDown } from 'lucide-vue-next'
 
 const inputText = ref('')
 const chunkSize = ref(3000)
 const removeDuplicates = ref(false)
+const isBlockView = ref(false)
+const collapsedBlocks = ref<Set<number>>(new Set())
+const copiedIndex = ref<number | null>(null)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+
+const CHUNK_MARK_SPLIT_RE = /(?:\r?\n)?--- CHUNK \d+ ---(?:\r?\n)?/
 
 const chunkCount = computed(() => {
   if (!inputText.value) return 0
   const matches = inputText.value.match(/--- CHUNK \d+ ---/g)
   return (matches ? matches.length : 0) + 1
+})
+
+const chunkBlocks = computed(() => {
+  if (!inputText.value) return []
+  return inputText.value.split(CHUNK_MARK_SPLIT_RE)
 })
 
 const runChunk = () => {
@@ -35,7 +46,7 @@ const runChunk = () => {
   }
 
   const chunks = []
-  let currentChunk = []
+  let currentChunk: string[] = []
   let currentLength = 0
   
   for (const line of lines) {
@@ -58,10 +69,59 @@ const runChunk = () => {
   }
   
   inputText.value = result
+  collapsedBlocks.value = new Set()
 }
 
 const clearChunks = () => {
   inputText.value = inputText.value.replace(/--- CHUNK \d+ ---\n?/g, '')
+  isBlockView.value = false
+  collapsedBlocks.value = new Set()
+}
+
+const toggleBlockView = () => {
+  if (!inputText.value) return
+  isBlockView.value = !isBlockView.value
+}
+
+const isBlockOpen = (index: number) => !collapsedBlocks.value.has(index)
+
+const handleBlockToggle = (index: number, event: Event) => {
+  const details = event.target as HTMLDetailsElement | null
+  if (!details) return
+  const next = new Set(collapsedBlocks.value)
+  if (details.open) {
+    next.delete(index)
+  } else {
+    next.add(index)
+  }
+  collapsedBlocks.value = next
+}
+
+const allCollapsed = computed(
+  () => chunkBlocks.value.length > 0 && chunkBlocks.value.every((_, i) => collapsedBlocks.value.has(i))
+)
+
+const toggleAllBlocks = () => {
+  if (allCollapsed.value) {
+    collapsedBlocks.value = new Set()
+  } else {
+    collapsedBlocks.value = new Set(chunkBlocks.value.map((_, i) => i))
+  }
+}
+
+const copyBlock = async (text: string, index: number) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    copiedIndex.value = index
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
+      if (copiedIndex.value === index) {
+        copiedIndex.value = null
+      }
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy', err)
+  }
 }
 </script>
 
@@ -94,6 +154,15 @@ const clearChunks = () => {
             <button class="btn primary" @click="runChunk" :disabled="!inputText">
               <Scissors :size="18" /> 実行
             </button>
+
+            <button
+              class="btn outline"
+              :class="{ active: isBlockView && inputText }"
+              @click="toggleBlockView"
+              :disabled="!inputText"
+            >
+              <Layers :size="18" /> ブロック分割
+            </button>
             
             <button class="btn outline" @click="clearChunks" :disabled="!inputText">
               <Trash2 :size="18" /> チャンクマーク消去
@@ -112,10 +181,52 @@ const clearChunks = () => {
       <!-- Main Content -->
       <main class="main-content">
         <div class="card fill-height">
-          <div class="card-header">
-            <h3>テキスト入力</h3>
+          <div class="card-header space-between">
+            <h3>{{ isBlockView && inputText ? `ブロック分割 (${chunkBlocks.length})` : 'テキスト入力' }}</h3>
+            <div v-if="isBlockView && inputText" class="header-actions">
+              <button
+                class="btn-outline"
+                @click="toggleAllBlocks"
+              >
+                <ChevronsUpDown :size="14" /> {{ allCollapsed ? 'すべて展開' : 'すべて折りたたむ' }}
+              </button>
+              <button
+                class="btn-outline"
+                @click="isBlockView = false"
+              >
+                <Pencil :size="14" /> テキスト編集に戻る
+              </button>
+            </div>
           </div>
-          <div class="editor-area">
+          <div v-if="isBlockView && inputText" class="blocks-area">
+            <details
+              v-for="(block, index) in chunkBlocks"
+              :key="index"
+              class="chunk-block"
+              :open="isBlockOpen(index)"
+              @toggle="handleBlockToggle(index, $event)"
+            >
+              <summary class="chunk-block-header">
+                <div class="chunk-block-meta">
+                  <ChevronDown :size="16" class="chunk-chevron" />
+                  <span class="chunk-badge">CHUNK {{ index + 1 }}</span>
+                  <span class="chunk-length">{{ block.length.toLocaleString() }} 文字</span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-copy"
+                  @click.stop.prevent="copyBlock(block, index)"
+                  :title="copiedIndex === index ? 'コピーしました' : 'コピー'"
+                >
+                  <Check v-if="copiedIndex === index" :size="14" class="copy-done" />
+                  <Copy v-else :size="14" />
+                  <span>{{ copiedIndex === index ? 'コピー済み' : 'コピー' }}</span>
+                </button>
+              </summary>
+              <pre class="chunk-pre"><code>{{ block }}</code></pre>
+            </details>
+          </div>
+          <div v-else class="editor-area">
             <textarea
               v-model="inputText"
               placeholder="ここにテキストを入力してください..."
@@ -288,11 +399,145 @@ const clearChunks = () => {
   background: var(--bg-hover);
 }
 
+.btn.outline.active {
+  border-color: var(--accent);
+  color: var(--accent-light);
+  background: var(--accent-glow);
+}
+
 .editor-area {
   flex: 1;
   padding: 20px;
   display: flex;
   flex-direction: column;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.blocks-area {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chunk-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.chunk-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: var(--transition);
+}
+
+.chunk-block-header::-webkit-details-marker {
+  display: none;
+}
+
+.chunk-block-header:hover {
+  background: var(--bg-hover);
+}
+
+.chunk-block[open] > .chunk-block-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.chunk-chevron {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+}
+
+.chunk-block[open] .chunk-chevron {
+  transform: rotate(0deg);
+}
+
+.chunk-block-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chunk-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-light);
+  background: var(--accent-glow);
+  border: 1px solid var(--border-accent);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+}
+
+.chunk-length {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-copy:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+}
+
+.copy-done {
+  color: var(--success);
+}
+
+.chunk-pre {
+  margin: 0;
+  padding: 16px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  user-select: text;
+}
+
+.chunk-pre code {
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+  padding: 0;
 }
 
 .text-area {

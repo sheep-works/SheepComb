@@ -68,9 +68,20 @@ function importFromGroom() {
     store.setStatus('Groom に取り込めるデータがありません', 'error')
     return
   }
+  if (isOverwrite.value) {
+    store.clear()
+    if (import.meta.client) {
+      try {
+        localStorage.removeItem('shuttle')
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
   selectedFiles.value = []
   store.importFromGroom(groomStore.sheets)
   currentPage.value = 1
+  hasParsed.value = true
   store.setStatus(`🐑 Groom から ${store.unitCount} 件のセグメントを取り込みました`, 'success')
   isActionsOpen.value = true
 }
@@ -83,10 +94,35 @@ const statusMsg = computed(() => {
   return store.statusMsg
 })
 
-// カード開閉状態（アップロードのみデフォルト開、下は初期折り畳みで全体を認知しやすく）
+// カード開閉状態（アップロードおよびアクションはデフォルト開）
 const isUploadOpen = ref(true)
-const isActionsOpen = ref(false)
+const isActionsOpen = ref(true)
 const isFilterOpen = ref(false)
+
+// データ上書きスイッチ (デフォルト: true)
+const isOverwrite = ref(true)
+const hasParsed = ref(false)
+
+if (import.meta.client) {
+  try {
+    const saved = localStorage.getItem('sheepcomb_parser_overwrite')
+    if (saved !== null) {
+      isOverwrite.value = saved === 'true'
+    }
+  } catch (e) {
+    console.error('Failed to read isOverwrite from localStorage:', e)
+  }
+}
+
+watch(isOverwrite, (val) => {
+  if (import.meta.client) {
+    try {
+      localStorage.setItem('sheepcomb_parser_overwrite', String(val))
+    } catch (e) {
+      console.error('Failed to save isOverwrite to localStorage:', e)
+    }
+  }
+})
 
 // Counts
 const countUnit = ref<'CHARA' | 'WORD'>('CHARA')
@@ -160,7 +196,12 @@ const handleFileDrop = (e: DragEvent) => {
   if (e.dataTransfer?.files) {
     const valid = filterValidFiles(Array.from(e.dataTransfer.files))
     if (valid.length > 0) {
-      selectedFiles.value = [...selectedFiles.value, ...valid]
+      if (isOverwrite.value && (hasParsed.value || store.hasUnits)) {
+        selectedFiles.value = valid
+        hasParsed.value = false
+      } else {
+        selectedFiles.value = [...selectedFiles.value, ...valid]
+      }
       isActionsOpen.value = true
     }
   }
@@ -174,7 +215,12 @@ const handleFileSelect = (e: Event) => {
   if (target.files) {
     const valid = filterValidFiles(Array.from(target.files))
     if (valid.length > 0) {
-      selectedFiles.value = [...selectedFiles.value, ...valid]
+      if (isOverwrite.value && (hasParsed.value || store.hasUnits)) {
+        selectedFiles.value = valid
+        hasParsed.value = false
+      } else {
+        selectedFiles.value = [...selectedFiles.value, ...valid]
+      }
       isActionsOpen.value = true
     }
     target.value = ''
@@ -186,6 +232,7 @@ const handleFileSelect = (e: Event) => {
  */
 const clearFiles = () => {
   selectedFiles.value = []
+  hasParsed.value = false
   store.clear()
 }
 
@@ -198,6 +245,18 @@ const parseFiles = async () => {
 
   try {
     store.setStatus(t('shuttle.parser.msg_parsing'), 'info')
+
+    // データ上書きが有効な場合、既存の Shuttle データを全消去・初期化する
+    if (isOverwrite.value) {
+      store.clear()
+      if (import.meta.client) {
+        try {
+          localStorage.removeItem('shuttle')
+        } catch (e) {
+          console.error(e)
+        }
+      }
+    }
 
     // File オブジェクトを Shuttle が受け取れる形式に変換
     const files = await Promise.all(selectedFiles.value.map(async file => {
@@ -216,6 +275,7 @@ const parseFiles = async () => {
     // プロセッサ（フィルタ等）を実行してステートを更新
     store.process()
     currentPage.value = 1
+    hasParsed.value = true
 
     store.setStatus(t('shuttle.parser.msg_parse_success'), 'success')
   } catch (e: any) {
@@ -349,9 +409,21 @@ function applyDirectInput() {
     return
   }
 
+  if (isOverwrite.value) {
+    store.clear()
+    if (import.meta.client) {
+      try {
+        localStorage.removeItem('shuttle')
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+
   selectedFiles.value = []
   store.setDirectUnits(pairs, 'Direct_Input')
   currentPage.value = 1
+  hasParsed.value = true
   closeDirectInputModal()
   store.setStatus(`直接入力から ${pairs.length} 件のセグメントを取り込みました`, 'success')
 }
@@ -422,6 +494,7 @@ function applyDirectInput() {
             <p v-if="selectedFiles.length === 0">{{ $t('shuttle.parser.drag_drop') }}</p>
             <p v-else class="file-count">{{ $t('shuttle.parser.files_selected', { count: selectedFiles.length }) }}</p>
             <span class="drop-ext-hint">.xlf, .mxliff, .sdlxliff, .tmx, .tbx, .xlsx, .docx, .csv, .json, .jsonl</span>
+            <span v-if="isOverwrite" class="drop-overwrite-badge">{{ $t('shuttle.parser.overwrite_badge') }}</span>
             <input
               type="file"
               ref="fileInput"
@@ -462,14 +535,29 @@ function applyDirectInput() {
           :title="$t('shuttle.parser.actions_title')" 
           v-model:open="isActionsOpen"
           class="sidebar-card"
-          :class="{ disabled: (selectedFiles.length === 0 && !store.hasUnits) || isProcessing }"
+          :class="{ disabled: isProcessing }"
         >
           <p class="hint-text">{{ $t('shuttle.parser.actions_hint') }}</p>
 
-          <label class="checkbox-label" style="margin-bottom: 8px;">
-            <input type="checkbox" v-model="splitByNewline" />
-            <span>改行で分割してパースする</span>
-          </label>
+          <div class="action-options-group">
+            <!-- データ上書きスイッチ -->
+            <div class="toggle-option-row">
+              <div class="toggle-info">
+                <span class="toggle-title">{{ $t('shuttle.parser.overwrite_data') }}</span>
+                <span class="toggle-desc">{{ $t('shuttle.parser.overwrite_data_hint') }}</span>
+              </div>
+              <label class="switch-toggle" :title="$t('shuttle.parser.overwrite_data')">
+                <input type="checkbox" v-model="isOverwrite" />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- 改行で分割してパースする -->
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="splitByNewline" />
+              <span>{{ $t('shuttle.parser.split_by_newline') }}</span>
+            </label>
+          </div>
 
           <button class="btn primary" @click="parseFiles" :disabled="selectedFiles.length === 0 || isProcessing">
             <Loader2 v-if="isProcessing" class="spin" :size="18" />
@@ -1484,5 +1572,100 @@ td.note {
 .btn-modal-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.drop-overwrite-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-glow, rgba(16, 185, 129, 0.15));
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+}
+
+.action-options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+}
+
+.toggle-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toggle-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.toggle-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.switch-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.switch-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px;
+}
+
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-muted);
+  transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+}
+
+.switch-toggle input:checked + .switch-slider {
+  background-color: var(--accent-glow, rgba(16, 185, 129, 0.2));
+  border-color: var(--accent);
+}
+
+.switch-toggle input:checked + .switch-slider:before {
+  transform: translateX(16px);
+  background-color: var(--accent);
 }
 </style>

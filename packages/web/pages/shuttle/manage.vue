@@ -244,8 +244,7 @@ async function doUpdateFromJsonl(e: Event) {
 
   try {
     const text = await file.text()
-    const updated = store.shuttle.manager.updateFromJsonl(store.data, text)
-    store.data.body.units = updated
+    store.updateFromJsonl(text)
     store.setStatus(t('shuttle.manage.msg_update_jsonl'), 'success')
   } catch (e: any) {
     store.setStatus(t('shuttle.manage.msg_update_error', { msg: e.message }), 'error')

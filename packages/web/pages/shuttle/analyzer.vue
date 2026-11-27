@@ -48,6 +48,10 @@ onMounted(() => {
       // ignore
     }
   }
+  // すでにストアに解析済みデータ (ref.tms あり) が存在していれば WWC を初期計算
+  if (store.hasData && hasTmRefInData.value && !tierCounts.value) {
+    doWeightedCount()
+  }
 })
 
 // カード開閉状態
@@ -72,8 +76,9 @@ const weights = ref<number[]>([0.1, 0.3, 0.6, 1.0, 1.0])
 const tierCounts = ref<number[] | null>(null)
 
 function doWeightedCount() {
-  if (!store.hasData || !store.shuttle.data) return
-  tierCounts.value = store.shuttle.manager.calculateTieredCounts(store.shuttle.data, countUnit.value)
+  const targetData = store.shuttle.data || store.data
+  if (!targetData) return
+  tierCounts.value = store.shuttle.manager.calculateTieredCounts(targetData, countUnit.value)
 }
 
 const weightedSubtotals = computed(() => {
@@ -96,10 +101,66 @@ const hasDataInStore = computed(() => store.hasData)
 const hasTm = computed(() => tmFiles.value.length > 0)
 const hasTb = computed(() => tbFiles.value.length > 0)
 
+// 現在のデータ内に ref.tms (TM類似度) が含まれているかどうか
+const hasTmRefInData = computed(() => {
+  const currentData = shwvTargetData.value || store.data
+  if (!currentData?.body?.units) return false
+  return currentData.body.units.some(u => u.ref?.tms && u.ref.tms.length > 0)
+})
+
 // 実行可能かどうか
 const canRun = computed(() => {
   return hasTargetFiles.value || hasUnitsInStore.value || hasDataInStore.value
 })
+
+// WWC集計のみを実行可能かどうか (データがあるか、対象ファイルが選択されている場合)
+const canRunWwc = computed(() => {
+  return hasDataInStore.value || shwvTargetData.value !== null || hasTargetFiles.value || hasUnitsInStore.value
+})
+
+// すでに解析済みまたは適用済みのデータから WWC (類似度ブロック別文字数集計) のみを実行
+async function doRunWwcOnly() {
+  if (!canRunWwc.value) return
+  isProcessing.value = true
+  statusMsg.value = { text: 'WWC集計を実行中...', type: 'info' }
+
+  try {
+    // 1. ShWvData が対象ファイルにある場合はストアへロード
+    if (shwvTargetData.value) {
+      statusMsg.value = { text: 'ShWvData をロード中...', type: 'info' }
+      await store.loadShwvData(shwvTargetData.value, targetFiles.value[0]?.name || 'project.json')
+    } else if (!store.hasData && hasTargetFiles.value) {
+      // ShWvData 形式以外の通常ファイルの場合、構造化（解析スキップ）してから集計
+      await doAnalyzeAndStructure(true)
+    }
+
+    const currentData = store.shuttle.data || store.data
+    if (!currentData || !currentData.body?.units) {
+      throw new Error('集計対象のセグメントデータがありません。')
+    }
+
+    // 2. WWC (類似度ブロックごとの集計) を実行
+    doWeightedCount()
+
+    const tmUnitsCount = currentData.body.units.filter(u => u.ref?.tms?.length).length
+    if (tmUnitsCount > 0) {
+      statusMsg.value = { 
+        text: `📊 WWC集計が完了しました (TM適用済み: ${tmUnitsCount} / ${store.shwvUnitCount} セグメント)`, 
+        type: 'success' 
+      }
+    } else {
+      statusMsg.value = { 
+        text: `📊 WWC集計が完了しました (${store.shwvUnitCount} セグメント - ref に TM なしのため新規扱い)`, 
+        type: 'info' 
+      }
+    }
+  } catch (err: any) {
+    console.error(err)
+    statusMsg.value = { text: err.message || 'WWC集計中にエラーが発生しました', type: 'error' }
+  } finally {
+    isProcessing.value = false
+  }
+}
 
 const validTargetExts = ['xlf', 'xliff', 'mxliff', 'sdlxliff', 'mqxliff', 'tmx', 'tbx', 'xlsx', 'csv', 'tsv', 'json', 'jsonl', 'docx']
 const validTmExts = ['tmx', 'xlf', 'xliff', 'mxliff', 'mqxliff', 'sdlxliff', 'csv', 'tsv', 'xlsx', 'json', 'jsonl']
@@ -144,8 +205,9 @@ async function addTargetFiles(files: File[]) {
           if (parsed.projectInfo?.projectName || parsed.meta?.project) {
             projectName.value = parsed.projectInfo?.projectName || parsed.meta?.project
           }
+          const hasTm = parsed.body?.units?.some((u: any) => u.ref?.tms?.length > 0)
           statusMsg.value = {
-            text: `ShWvData を検出しました: ${parsed.body?.units?.length ?? 0} セグメント (元ファイル情報・メタデータを完全保持して解析します)`,
+            text: `ShWvData を検出しました: ${parsed.body?.units?.length ?? 0} セグメント${hasTm ? ' (TM類似度情報あり: 「WWC集計のみ実行」が可能)' : ' (元ファイル情報・メタデータを完全保持)'}`,
             type: 'info'
           }
         } else {
@@ -244,6 +306,7 @@ async function doAnalyzeAndStructure(skipAnalysis = false) {
 
     // 解析スキップモードの場合はここで完了
     if (skipAnalysis) {
+      doWeightedCount()
       statusMsg.value = { text: `⚡ 構造化が完了しました（解析スキップ: ${store.shwvUnitCount} セグメント）`, type: 'success' }
       return
     }
@@ -444,6 +507,15 @@ function downloadShwv() {
               <span>{{ isProcessing ? '解析中...' : '解析・構造化を実行' }}</span>
             </button>
             <button 
+              class="btn-wwc-only" 
+              @click="doRunWwcOnly" 
+              :disabled="isProcessing || !canRunWwc"
+              title="TM/TB照合や類似度解析をスキップし、すでに適用されている ref (TM一致率) をもとに類似度ブロック別文字数集計 (WWC) のみを即座に実行します"
+            >
+              <BarChart2 :size="15" />
+              <span>WWC集計のみ実行 (解析済ref反映)</span>
+            </button>
+            <button 
               class="btn-skip-analysis" 
               @click="() => doAnalyzeAndStructure(true)" 
               :disabled="isProcessing || !canRun"
@@ -468,7 +540,7 @@ function downloadShwv() {
           <div class="card-header space-between">
             <div class="title-group">
               <BarChart2 :size="20" class="header-icon" />
-              <h2>解析結果 & 統計サマリー</h2>
+              <h2>解析結果 & 統計サマリー (WWC)</h2>
               <span class="badge" v-if="store.hasData">
                 {{ store.shwvUnitCount }} セグメント
               </span>
@@ -481,6 +553,9 @@ function downloadShwv() {
                   <option value="WORD">単語数 (Word)</option>
                 </select>
               </div>
+              <button class="btn-outline" @click="doWeightedCount" title="類似度ブロックごとの集計を再計算">
+                <BarChart2 :size="14" /> WWC再集計
+              </button>
               <button class="btn-outline" @click="downloadShwv">
                 <Download :size="14" /> ShWv (JSON)
               </button>
@@ -546,8 +621,20 @@ function downloadShwv() {
           <div class="empty-state" v-else-if="store.hasData">
             <CheckCircle :size="48" class="empty-icon success-icon" />
             <h3>構造化データ（ShWvData）が準備完了しています</h3>
-            <p>解析はスキップされました（TM/TB照合・類似度統計なし）。</p>
-            <p>上部の「管理へ進む」からセグメント一覧の確認や編集・エクスポートを行えます。</p>
+            <p v-if="hasTmRefInData">
+              ユニットの ref に TM 類似度情報が記録されています。「WWC集計を実行」で類似度ブロックごとの文字数・単語数集計を表示できます。
+            </p>
+            <p v-else>
+              解析はスキップされました（TM/TB照合・類似度統計なし）。WWC集計を実行すると、全ユニットが新規（74%以下）として総文字数が集計されます。
+            </p>
+            <div style="display: flex; gap: 10px; margin-top: 16px;">
+              <button class="btn-run" style="width: auto; padding: 8px 22px;" @click="doRunWwcOnly">
+                <BarChart2 :size="16" /> WWC集計を実行
+              </button>
+              <NuxtLink to="/shuttle/manage" class="btn-outline" style="text-decoration: none; padding: 8px 18px;">
+                管理・QAへ進む
+              </NuxtLink>
+            </div>
           </div>
           <div class="empty-state" v-else>
             <Search :size="48" class="empty-icon" />
@@ -900,6 +987,35 @@ function downloadShwv() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.btn-wwc-only {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-xs);
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-wwc-only:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #60a5fa;
+  color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.btn-wwc-only:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-skip-analysis {

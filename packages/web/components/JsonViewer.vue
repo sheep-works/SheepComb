@@ -254,6 +254,68 @@ function formatTmRefLabel(tm: ShWvRefTm): string {
   return `TM #${rowNum}`
 }
 
+export interface ParsedSfTag {
+  label: string
+  value: string
+}
+
+export interface ParsedNote {
+  hasSfMeta: boolean
+  sfMetaRaw: string
+  sfTags: ParsedSfTag[]
+  text: string
+  raw: string
+}
+
+function parseSfTags(metaStr: string): ParsedSfTag[] {
+  return metaStr.split('|').map(part => {
+    const p = part.trim()
+    const colonIdx = p.indexOf(':')
+    if (colonIdx !== -1) {
+      return {
+        label: p.slice(0, colonIdx).trim(),
+        value: p.slice(colonIdx + 1).trim()
+      }
+    }
+    return { label: p, value: '' }
+  }).filter(t => t.label.length > 0)
+}
+
+function parseNote(noteText?: string | null): ParsedNote | null {
+  if (!noteText) return null
+  const trimmed = noteText.trim()
+  if (!trimmed) return null
+
+  // 1. 新形式 @sf[...] (Suffolk v0.0.3+)
+  if (trimmed.startsWith('@sf[')) {
+    const endBracket = trimmed.indexOf(']')
+    if (endBracket !== -1) {
+      const sfMetaRaw = trimmed.slice(4, endBracket).trim()
+      const text = trimmed.slice(endBracket + 1).trim()
+      const sfTags = parseSfTags(sfMetaRaw)
+      return { hasSfMeta: true, sfMetaRaw, sfTags, text, raw: trimmed }
+    }
+  }
+
+  // 2. 旧形式 [...] (後方互換: [Sheet: ...] や [Slide: ...])
+  if (trimmed.startsWith('[') && (trimmed.startsWith('[Sheet:') || trimmed.startsWith('[Slide:'))) {
+    const endBracket = trimmed.indexOf(']')
+    if (endBracket !== -1) {
+      const sfMetaRaw = trimmed.slice(1, endBracket).trim()
+      const text = trimmed.slice(endBracket + 1).trim()
+      const sfTags = parseSfTags(sfMetaRaw)
+      return { hasSfMeta: true, sfMetaRaw, sfTags, text, raw: trimmed }
+    }
+  }
+
+  // 3. 通常の備考テキスト
+  return { hasSfMeta: false, sfMetaRaw: '', sfTags: [], text: trimmed, raw: trimmed }
+}
+
+const parsedSelectedNote = computed(() => {
+  return parseNote(selectedUnit.value?.note)
+})
+
 defineExpose({ resetPage, openModal })
 </script>
 
@@ -322,6 +384,29 @@ defineExpose({ resetPage, openModal })
             <div class="jv-field" v-if="unit.memo">
               <span class="jv-label jv-label-memo">MEMO</span>
               <pre>{{ unit.memo }}</pre>
+            </div>
+            <div class="jv-field jv-field-note" v-if="unit.note">
+              <span class="jv-label jv-label-note">NOTE</span>
+              <div class="jv-note-line">
+                <template v-if="parseNote(unit.note)?.hasSfMeta">
+                  <div class="jv-sf-chips">
+                    <span
+                      v-for="(tag, ti) in parseNote(unit.note)?.sfTags"
+                      :key="ti"
+                      class="jv-sf-chip"
+                    >
+                      <span class="chip-k">{{ tag.label }}</span>
+                      <span class="chip-v" v-if="tag.value">{{ tag.value }}</span>
+                    </span>
+                  </div>
+                  <span v-if="parseNote(unit.note)?.text" class="jv-note-extra">
+                    {{ parseNote(unit.note)?.text }}
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="jv-note-plain">{{ unit.note }}</span>
+                </template>
+              </div>
             </div>
           </td>
         </tr>
@@ -488,10 +573,39 @@ defineExpose({ resetPage, openModal })
               </div>
 
               <div class="jv-field-block" v-if="selectedUnit.note">
-                <div class="jv-field-header">
-                  <span class="jv-label">NOTE (備考)</span>
+                <div class="jv-field-header jv-field-header-between">
+                  <span class="jv-label jv-label-note">NOTE (備考)</span>
+                  <span v-if="parsedSelectedNote?.hasSfMeta" class="jv-badge-sf-meta">
+                    復元メタ情報 (@sf)
+                  </span>
                 </div>
-                <div class="jv-text-box jv-text-note">{{ selectedUnit.note }}</div>
+                <!-- @sf[...] メタ情報バッジ -->
+                <div v-if="parsedSelectedNote?.hasSfMeta" class="jv-sf-meta-box">
+                  <div class="jv-sf-chips-large">
+                    <span
+                      v-for="(tag, ti) in parsedSelectedNote.sfTags"
+                      :key="ti"
+                      class="jv-sf-chip-lg"
+                    >
+                      <span class="chip-k">{{ tag.label }}</span>
+                      <span class="chip-v" v-if="tag.value">{{ tag.value }}</span>
+                    </span>
+                  </div>
+                </div>
+                <!-- 備考本文（メタ情報以外の追加テキスト、または平文note） -->
+                <div
+                  v-if="parsedSelectedNote?.text"
+                  class="jv-text-box jv-text-note"
+                  style="margin-top: 6px;"
+                >
+                  {{ parsedSelectedNote.text }}
+                </div>
+                <div
+                  v-else-if="!parsedSelectedNote?.hasSfMeta"
+                  class="jv-text-box jv-text-note"
+                >
+                  {{ selectedUnit.note }}
+                </div>
               </div>
 
               <div class="jv-field-block">
@@ -887,6 +1001,110 @@ defineExpose({ resetPage, openModal })
 .jv-label-memo {
   background: rgba(168, 85, 247, 0.15);
   color: #c084fc;
+}
+
+.jv-label-note {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+
+.jv-field-note {
+  flex: 1 1 100%;
+  margin-top: 4px;
+}
+
+.jv-note-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.jv-sf-chips {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.jv-sf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-family: var(--font-mono, monospace);
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #c4b5fd;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+
+.jv-sf-chip .chip-k {
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+.jv-sf-chip .chip-v {
+  font-weight: 600;
+  color: #ede9fe;
+}
+
+.jv-note-extra {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.jv-note-plain {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.jv-sf-meta-box {
+  margin-bottom: 8px;
+}
+
+.jv-sf-chips-large {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jv-sf-chip-lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-family: var(--font-mono, monospace);
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #ddd6fe;
+  border-radius: var(--radius-xs);
+}
+
+.jv-sf-chip-lg .chip-k {
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+.jv-sf-chip-lg .chip-v {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.jv-badge-sf-meta {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
 }
 
 .jv-ref-row td {

@@ -760,8 +760,8 @@ const formatFileSize = (bytes: number): string => {
                     <input v-model="filterOptions.xlsxTarget" type="text" placeholder="例: B" class="input-text-sm" />
                   </div>
                   <div class="sub-field">
-                    <label>コンテキスト列</label>
-                    <input v-model="filterOptions.xlsxContext" type="text" placeholder="例: C" class="input-text-sm" />
+                    <label>コンテキスト列（複数可: 例: C または C,D）</label>
+                    <input v-model="filterOptions.xlsxContext" type="text" placeholder="例: C または C,D" class="input-text-sm" />
                   </div>
                   <div class="sub-field">
                     <label>ヘッダースキップ行</label>
@@ -848,6 +848,21 @@ const formatFileSize = (bytes: number): string => {
                   <ShieldAlert :size="15" />
                   <span>フェイルセーフ出力 (CSV/TXT)</span>
                 </button>
+              </div>
+            </div>
+
+            <!-- ShWvData プレビュー (ShWvData 出力時) -->
+            <div v-if="extractedResult.format === 'shwv' && extractedResult.data?.body?.units?.length" class="shwv-preview-area">
+              <div class="preview-header">抽出データ プレビュー (先頭 {{ Math.min(extractedResult.data.body.units.length, 3) }} 件 / 復元情報 @sf 付与状況):</div>
+              <div class="shwv-sample-list">
+                <div v-for="unit in extractedResult.data.body.units.slice(0, 3)" :key="unit.idx" class="shwv-sample-card">
+                  <div class="sample-card-head">
+                    <span class="sample-badge">#{{ unit.idx }}</span>
+                    <span v-if="unit.note" class="sample-note-badge" :title="unit.note">{{ unit.note }}</span>
+                  </div>
+                  <div class="sample-src">{{ unit.src }}</div>
+                  <div v-if="unit.tgt" class="sample-tgt">{{ unit.tgt }}</div>
+                </div>
               </div>
             </div>
 
@@ -1663,6 +1678,69 @@ const formatFileSize = (bytes: number): string => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.shwv-preview-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.shwv-sample-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.shwv-sample-card {
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sample-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sample-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.sample-note-badge {
+  font-size: 0.68rem;
+  font-family: var(--font-mono, monospace);
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #c4b5fd;
+  padding: 1px 6px;
+  border-radius: 4px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sample-src {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.sample-tgt {
+  font-size: 0.8rem;
+  color: #34d399;
+  line-height: 1.4;
 }
 
 .xliff-preview-area {
