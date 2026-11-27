@@ -46,7 +46,7 @@ const runChunk = () => {
   }
 
   const chunks = []
-  let currentChunk = []
+  let currentChunk: string[] = []
   let currentLength = 0
   
   for (const line of lines) {

@@ -29,6 +29,32 @@ interface ReleaseEntry {
 
 const releases: ReleaseEntry[] = [
   {
+    version: '2.4.0',
+    date: '2026-11-27',
+    isLatest: true,
+    tag: {
+      ja: '機能の追加',
+      en: 'Add Function',
+      zh: '新增功能'
+    },
+    summary: {
+      ja: 'パース時に既存のデータを上書きできるようにしました',
+      en: 'Added the ability to overwrite existing data in the parsing step.',
+      zh: '解析时可以覆盖现有数据。'
+    },
+    items: {
+      ja: [
+        'パース時に既存データの上書き機能を追加',
+      ],
+      en: [
+        'Added overwriting parser',
+      ],
+      zh: [
+        '解析时可以覆盖现有数据',
+      ]
+    }
+  },
+  {
     version: '2.3.1',
     date: '2026-11-20',
     isLatest: true,
